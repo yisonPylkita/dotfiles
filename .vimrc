@@ -10,3 +10,4 @@ set cindent
 
 set number
 
+colorscheme delek
