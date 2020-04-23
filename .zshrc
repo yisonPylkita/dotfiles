@@ -29,15 +29,6 @@ fpath+=~/.zfunc
 autoload -Uz compinit
 compinit
 
-#setopt COMPLETE_ALIASES
-#zstyle ':completion:*:descriptions' format '%U%B%d%b%u'
-#zstyle ':completion::complete:*' gain-privileges 1
-#zstyle ':completion:*:warnings' format '%BSorry, no matches for: %d%b'
-
-# sync history netween terminals
-#setopt inc_append_history
-#setopt share_history
-
 # Edit command line with sane keybindings (Emacs)
 # When you set EDITOR=vi then ZSH will set command like keybindings to vi as well
 # And since this is totally retarded this magic option has to be set
@@ -50,20 +41,19 @@ bindkey  "^[[H"   beginning-of-line
 bindkey  "^[[F"   end-of-line
 
 # Aliases
-alias vi="nvim"
-alias gco="git checkout"
+[[ -f /usr/bin/nvim ]] && alias vi="nvim" || alias vi="vim"
 alias _='sudo '
 alias la='lsd -la'
 alias gss='git status'
+alias gco="git checkout"
 alias gcmsg='git commit -m'
 alias grbi='git rebase -i'
-alias gco='git checkout'
-alias ghc='git clone https://github.com/' # how to append params here? Should be a function, right?
+alias ghc='git clone https://github.com/' # TODO: how to append params here? Should be a function, right?
 
 # Sway config
-alias sway='export XKB_DEFAULT_LAYOUT=pl; export XKB_DEFAULT_MODEL=pc104; sway'
 export BEMENU_BACKEND=wayland
 export MOZ_ENABLE_WAYLAND=1
+alias sway='export XKB_DEFAULT_LAYOUT=pl; export XKB_DEFAULT_MODEL=pc104; sway'
 
 # exports
 # export TERM=screen-256color # Should I even set this var?
