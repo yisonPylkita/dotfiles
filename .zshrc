@@ -2,6 +2,17 @@
 [[ -z "$PS1" ]] && return
 
 # Set promprt
+#
+# Ok, this is quite serious actually
+# I need my prompt to provide me these features:
+#  - Is this a SSH connection or not?
+#  - Show me parent and current directory
+#  - Show me status of last command
+#  - Show me date of the time when prompt was created (so for every Return
+#    key I'll get new date) up to seconds precision
+#  - [Optional] Show me time of last command execution
+#  - [Optional] Show me if I'm in a git repo
+#
 #PROMPT='%(?.%F{green}√.%F{red}?%?)%f %B%F{240}%2~%f%b %# '
 PS1=$'%(?..%B%K{red}[%?]%K{def}%b )%(1j.%b%K{yel}%F{bla}%jJ%F{def}%K{def} .)%F{white}%B%*%b %F{mag}%m:%F{white}%~ %(!.#.>) %F{def}'
 
@@ -18,13 +29,14 @@ fpath+=~/.zfunc
 autoload -Uz compinit
 compinit
 
-setopt COMPLETE_ALIASES
-zstyle ':completion:*' menu select
-zstyle ':completion::complete:*' gain-privileges 1
+#setopt COMPLETE_ALIASES
+#zstyle ':completion:*:descriptions' format '%U%B%d%b%u'
+#zstyle ':completion::complete:*' gain-privileges 1
+#zstyle ':completion:*:warnings' format '%BSorry, no matches for: %d%b'
 
 # sync history netween terminals
-setopt inc_append_history
-setopt share_history
+#setopt inc_append_history
+#setopt share_history
 
 # Edit command line with sane keybindings (Emacs)
 # When you set EDITOR=vi then ZSH will set command like keybindings to vi as well
