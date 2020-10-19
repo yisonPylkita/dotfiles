@@ -21,6 +21,8 @@ HISTFILE=~/.zsh_history
 HISTSIZE=20000
 SAVEHIST=10000
 setopt appendhistory
+setopt sharehistory
+setopt incappendhistory
 
 # fpath
 fpath+=~/.zfunc
@@ -55,6 +57,8 @@ alias sau='sudo apt update && sudo apt upgrade --yes'
 alias sai='sudo apt install'
 alias bat='batcat'
 alias htop='htop -d10'
+# Docker aliases
+alias dpsa='docker ps --all'
 
 # Sway config
 export BEMENU_BACKEND=wayland
@@ -70,8 +74,7 @@ export XDG_CONFIG_HOME=~/.config
 export PATH="$HOME/.local/bin:$PATH"
 
 # fzf - commands history fuzzy finder. Also interactive files searcher
-source /usr/share/doc/fzf/examples/key-bindings.zsh
-source /usr/share/doc/fzf/examples/completion.zsh
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 # Rust
 source $HOME/.cargo/env
@@ -84,3 +87,5 @@ source $HOME/.cargo/env
 # Sign my commits with a GPG key
 # TODO: check if this works
 export GPG_TTY=$(tty)
+
+
