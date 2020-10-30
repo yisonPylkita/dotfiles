@@ -55,10 +55,11 @@ alias gcl='git clean -fdx'
 alias ghc='git clone https://github.com/' # TODO: how to append params here? Should be a function, right?
 alias sau='sudo apt update && sudo apt upgrade --yes'
 alias sai='sudo apt install'
-alias bat='batcat'
 alias htop='htop -d10'
 # Docker aliases
+alias dps='docker ps'
 alias dpsa='docker ps --all'
+alias docker_kill_all='docker ps | awk {" print $1 "} | tail -n+2 > tmp.txt; for line in $(cat tmp.txt); do docker kill $line; done; rm tmp.txt'
 
 # Sway config
 export BEMENU_BACKEND=wayland
