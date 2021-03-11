@@ -29,7 +29,7 @@ fpath+=~/.zfunc
 
 # Autocompletion
 autoload -Uz compinit
-compinit
+compinit -D
 
 ## Edit command line with sane keybindings (Emacs)
 ## When you set EDITOR=vi then ZSH will set command like keybindings to vi as well
@@ -59,7 +59,7 @@ alias htop='htop -d10'
 # Docker aliases
 alias dps='docker ps'
 alias dpsa='docker ps --all'
-alias docker_kill_all='docker ps | awk {" print $1 "} | tail -n+2 > tmp.txt; for line in $(cat tmp.txt); do docker kill $line; done; rm tmp.txt'
+alias docker_kill_all='docker ps | awk {' print $1 '} | tail -n+2 > tmp.txt; for line in $(cat tmp.txt); do docker kill $line; done; rm tmp.txt'
 
 # Sway config
 export BEMENU_BACKEND=wayland
