@@ -68,7 +68,7 @@ alias sway='export XKB_DEFAULT_LAYOUT=pl; export XKB_DEFAULT_MODEL=pc104; sway'
 
 # exports
 # export TERM=screen-256color # Should I even set this var?
-export EDITOR=vi
+export EDITOR=nvim
 export XDG_CONFIG_HOME=~/.config
 
 # standard PATH adjustments
