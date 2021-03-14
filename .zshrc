@@ -89,6 +89,6 @@ source $HOME/.cargo/env
 export GPG_TTY=$(tty)
 
 # SSH agent setup
-# Add `ssh-agent > ~/.ssh/active_agent.env` to your ~/.profile and after login execute `ssh-add`
-source ~/.ssh/active_agent.env
+# Add `ssh-agent -s > ~/.ssh/active_agent.env` to your ~/.profile and after login execute `ssh-add`
+eval "$(cat ~/.ssh/active_agent.env)"
 
