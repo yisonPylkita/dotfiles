@@ -86,7 +86,9 @@ source $HOME/.cargo/env
 #[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
 # Sign my commits with a GPG key
-# TODO: check if this works
 export GPG_TTY=$(tty)
 
+# SSH agent setup
+# Add `ssh-agent > ~/.ssh/active_agent.env` to your ~/.profile and after login execute `ssh-add`
+source ~/.ssh/active_agent.env
 
