@@ -53,7 +53,7 @@ alias gcmsg='git commit -S -m'
 alias grbi='git rebase -i'
 alias gcl='git clean -fdx'
 alias ghc='git clone https://github.com/' # TODO: how to append params here? Should be a function, right?
-alias sau='sudo apt update && sudo apt upgrade --yes'
+alias sau='sudo apt update && sudo apt upgrade --yes && cargo install-update -a'
 alias sai='sudo apt install'
 alias htop='htop -d10'
 # Docker aliases
@@ -86,6 +86,7 @@ source $HOME/.cargo/env
 #[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
 # Sign my commits with a GPG key
+eval $(gpg-agent --daemon)
 export GPG_TTY=$(tty)
 
 # SSH agent setup
