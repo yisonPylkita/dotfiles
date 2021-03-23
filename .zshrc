@@ -43,6 +43,9 @@ compinit -D
 #bindkey  "^[[F"   end-of-line
 TERM=xterm-color
 
+# Don't pause terminal on Ctrl+S
+[[ $- != *i* ]] && return
+
 # Aliases
 [[ -f /usr/bin/nvim ]] && alias vi="nvim" || alias vi="vim"
 alias _='sudo '
@@ -91,5 +94,10 @@ export GPG_TTY=$(tty)
 
 # SSH agent setup
 # Add `ssh-agent -s > ~/.ssh/active_agent.env` to your ~/.profile and after login execute `ssh-add`
-eval "$(cat ~/.ssh/active_agent.env)"
+# eval "$(cat ~/.ssh/active_agent.env)"
+
+
+
+# WSL stuff
+alias edge="/mnt/c/Program\ Files\ \(x86\)/Microsoft/Edge/Application/msedge.exe"
 
