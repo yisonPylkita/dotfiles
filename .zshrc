@@ -1,6 +1,15 @@
 # Skip all this for non-interactive shells
 [[ -z "$PS1" ]] && return
 
+# Best way to keep your dotfiles in sync is to make them symlinks
+[[ -L ~/.zshrc ]] || {
+	local COLOR_GREEN=$(echo -en '\033[01;32m')
+	local COLOR_RESTORE=$(echo -en '\033[0m')
+
+	echo "Your ~/.zshrc file is not a symlink. Keep your dotfiles in sync."
+	echo "Do: ${COLOR_GREEN}rm ~/.zshrc && ln -s ~/h_dev/dotfiles/.zshrc ~/.zshrc${COLOR_RESTORE}"
+}
+
 # Set promprt
 #
 # Ok, this is quite serious actually
@@ -96,8 +105,5 @@ export GPG_TTY=$(tty)
 # Add `ssh-agent -s > ~/.ssh/active_agent.env` to your ~/.profile and after login execute `ssh-add`
 # eval "$(cat ~/.ssh/active_agent.env)"
 
-
-
 # WSL stuff
 alias edge="/mnt/c/Program\ Files\ \(x86\)/Microsoft/Edge/Application/msedge.exe"
-
