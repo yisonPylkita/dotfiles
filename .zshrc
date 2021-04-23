@@ -10,7 +10,7 @@
 	echo "Do: ${COLOR_GREEN}rm ~/.zshrc && ln -s ~/h_dev/dotfiles/.zshrc ~/.zshrc${COLOR_RESTORE}"
 }
 
-# Set promprt
+# Set prompt
 #
 # Ok, this is quite serious actually
 # I need my prompt to provide me these features:
@@ -22,8 +22,20 @@
 #  - [Optional] Show me time of last command execution
 #  - [Optional] Show me if I'm in a git repo
 #
+
+function prompt_git_branch_name() {
+	echo "$(git branch --show-current)"
+}
+
+# ✔️/❌ main
+function rprompt_compose() {
+
+}
+
+setopt promptsubst # To be able to call functions inside of prompts
 #PROMPT='%(?.%F{green}√.%F{red}?%?)%f %B%F{240}%2~%f%b %# '
-PS1=$'%(?..%B%K{red}[%?]%K{def}%b )%(1j.%b%K{yel}%F{bla}%jJ%F{def}%K{def} .)%F{white}%B%*%b %F{mag}%m:%F{white}%~ %(!.#.>) %F{def}'
+PROMPT=$"%(?..%B%K{red}[%?]%K{def}%b )%(1j.%b%K{yel}%F{bla}%jJ%F{def}%K{def} .)%F{white}%B%*%b %F{mag}%m:%F{white}%~ %(!.#.>) %F{def}"$'\n'"> "
+RPROMPT='❌✔️ $(prompt_git_branch_name)'
 
 # ZSH history settings
 HISTFILE=~/.zsh_history
@@ -72,6 +84,8 @@ alias htop='htop -d10'
 alias dps='docker ps'
 alias dpsa='docker ps --all'
 alias docker_kill_all='docker ps | awk {' print $1 '} | tail -n+2 > tmp.txt; for line in $(cat tmp.txt); do docker kill $line; done; rm tmp.txt'
+alias docker_remove_all='docker stop $(docker ps -qa); docker rm $(docker ps -qa); docker rmi -f $(docker images -qa); docker volume rm $(docker volume ls -q); docker network rm $(docker network ls -q)'
+alias dc='docker-compose'
 
 # Sway config
 export BEMENU_BACKEND=wayland
@@ -103,7 +117,7 @@ export GPG_TTY=$(tty)
 
 # SSH agent setup
 # Add `ssh-agent -s > ~/.ssh/active_agent.env` to your ~/.profile and after login execute `ssh-add`
-# eval "$(cat ~/.ssh/active_agent.env)"
+eval "$(cat ~/.ssh/active_agent.env)"
 
 # WSL stuff
 alias edge="/mnt/c/Program\ Files\ \(x86\)/Microsoft/Edge/Application/msedge.exe"
