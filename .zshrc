@@ -23,19 +23,9 @@
 #  - [Optional] Show me if I'm in a git repo
 #
 
-function prompt_git_branch_name() {
-	echo "$(git branch --show-current)"
-}
-
-# ✔️/❌ main
-function rprompt_compose() {
-
-}
-
-setopt promptsubst # To be able to call functions inside of prompts
-#PROMPT='%(?.%F{green}√.%F{red}?%?)%f %B%F{240}%2~%f%b %# '
-PROMPT=$"%(?..%B%K{red}[%?]%K{def}%b )%(1j.%b%K{yel}%F{bla}%jJ%F{def}%K{def} .)%F{white}%B%*%b %F{mag}%m:%F{white}%~ %(!.#.>) %F{def}"$'\n'"> "
-RPROMPT='❌✔️ $(prompt_git_branch_name)'
+setopt prompt_subst # To be able to call functions inside of prompts
+PS1='$(~/.zsh_tools/prompt-rs --error $?)'
+RPS1='$(~/.zsh_tools/prompt-rs --rprompt)'
 
 # ZSH history settings
 HISTFILE=~/.zsh_history
@@ -58,21 +48,21 @@ compinit -D
 #set -o emacs
 ## Also since we're at it I would like to traverse between words in terminal
 ## input with Ctrl+Arrow. Home and End keys would be nice too
-#bindkey "^[[1;5C" forward-word
-#bindkey "^[[1;5D" backward-word
-#bindkey  "^[[H"   beginning-of-line
-#bindkey  "^[[F"   end-of-line
+#bindkey '^[[1;5C' forward-word
+#bindkey '^[[1;5D' backward-word
+#bindkey  '^[[H'   beginning-of-line
+#bindkey  '^[[F'   end-of-line
 TERM=xterm-color
 
 # Don't pause terminal on Ctrl+S
 [[ $- != *i* ]] && return
 
 # Aliases
-[[ -f /usr/bin/nvim ]] && alias vi="nvim" || alias vi="vim"
+[[ -f /usr/bin/nvim ]] && alias vi='nvim' || alias vi='vim'
 alias _='sudo '
 alias la='lsd -la'
 alias gss='git status'
-alias gco="git checkout"
+alias gco='git checkout'
 alias gcmsg='git commit -S -m'
 alias grbi='git rebase -i'
 alias gcl='git clean -fdx'
@@ -83,8 +73,8 @@ alias htop='htop -d10'
 # Docker aliases
 alias dps='docker ps'
 alias dpsa='docker ps --all'
-alias docker_kill_all='docker ps | awk {' print $1 '} | tail -n+2 > tmp.txt; for line in $(cat tmp.txt); do docker kill $line; done; rm tmp.txt'
-alias docker_remove_all='docker stop $(docker ps -qa); docker rm $(docker ps -qa); docker rmi -f $(docker images -qa); docker volume rm $(docker volume ls -q); docker network rm $(docker network ls -q)'
+#alias docker_kill_all='docker ps | awk {' print $1 '} | tail -n+2 > tmp.txt; for line in $(cat tmp.txt); do docker kill $line; done; rm tmp.txt'
+#alias docker_remove_all='docker stop $(docker ps -qa); docker rm $(docker ps -qa); docker rmi -f $(docker images -qa); docker volume rm $(docker volume ls -q); docker network rm $(docker network ls -q)'
 alias dc='docker-compose'
 
 # Sway config
@@ -108,8 +98,8 @@ source $HOME/.cargo/env
 
 # Node version manager
 # Disabled for now cuz its slow as fuck
-#export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
-#[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+#export NVM_DIR='$([ -z '${XDG_CONFIG_HOME-}' ] && printf %s '${HOME}/.nvm' || printf %s '${XDG_CONFIG_HOME}/nvm')'
+#[ -s '$NVM_DIR/nvm.sh' ] && \. '$NVM_DIR/nvm.sh'
 
 # Sign my commits with a GPG key
 eval $(gpg-agent --daemon)
@@ -117,7 +107,8 @@ export GPG_TTY=$(tty)
 
 # SSH agent setup
 # Add `ssh-agent -s > ~/.ssh/active_agent.env` to your ~/.profile and after login execute `ssh-add`
-eval "$(cat ~/.ssh/active_agent.env)"
+#eval '$(cat ~/.ssh/active_agent.env)'
 
 # WSL stuff
-alias edge="/mnt/c/Program\ Files\ \(x86\)/Microsoft/Edge/Application/msedge.exe"
+alias edge='/mnt/c/Program\ Files\ \(x86\)/Microsoft/Edge/Application/msedge.exe'
+
