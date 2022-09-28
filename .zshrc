@@ -24,8 +24,8 @@
 #
 
 setopt prompt_subst # To be able to call functions inside of prompts
-PS1='$(~/.zsh_tools/prompt-rs --error $?)'
-RPS1='$(~/.zsh_tools/prompt-rs --rprompt)'
+#PS1='$(~/.zsh_tools/prompt-rs --error $?)'
+#RPS1='$(~/.zsh_tools/prompt-rs --rprompt)'
 
 # ZSH history settings
 HISTFILE=~/.zsh_history
