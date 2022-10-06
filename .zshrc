@@ -1,14 +1,7 @@
+# To keep your dotfiles in sync remember to make them hardlinks to yisonPylita/dotfiles repo
+
 # Skip all this for non-interactive shells
 [[ -z "$PS1" ]] && return
-
-# Best way to keep your dotfiles in sync is to make them symlinks
-[[ -L ~/.zshrc ]] || {
-	local COLOR_GREEN=$(echo -en '\033[01;32m')
-	local COLOR_RESTORE=$(echo -en '\033[0m')
-
-	echo "Your ~/.zshrc file is not a symlink. Keep your dotfiles in sync."
-	echo "Do: ${COLOR_GREEN}rm ~/.zshrc && ln -s ~/h_dev/dotfiles/.zshrc ~/.zshrc${COLOR_RESTORE}"
-}
 
 # Set prompt
 #
@@ -23,9 +16,10 @@
 #  - [Optional] Show me if I'm in a git repo
 #
 
-setopt prompt_subst # To be able to call functions inside of prompts
+#setopt prompt_subst # To be able to call functions inside of prompts
 #PS1='$(~/.zsh_tools/prompt-rs --error $?)'
 #RPS1='$(~/.zsh_tools/prompt-rs --rprompt)'
+eval "$(starship init zsh)"
 
 # ZSH history settings
 HISTFILE=~/.zsh_history
@@ -42,23 +36,29 @@ fpath+=~/.zfunc
 autoload -Uz compinit
 compinit -D
 
-## Edit command line with sane keybindings (Emacs)
-## When you set EDITOR=vi then ZSH will set command like keybindings to vi as well
-## And since this is totally retarded this magic option has to be set
-#set -o emacs
-## Also since we're at it I would like to traverse between words in terminal
-## input with Ctrl+Arrow. Home and End keys would be nice too
-#bindkey '^[[1;5C' forward-word
-#bindkey '^[[1;5D' backward-word
-#bindkey  '^[[H'   beginning-of-line
-#bindkey  '^[[F'   end-of-line
-TERM=xterm-color
-
 # Don't pause terminal on Ctrl+S
 [[ $- != *i* ]] && return
 
 # Aliases
-[[ -f /usr/bin/nvim ]] && alias vi='nvim' || alias vi='vim'
+get_prefered_editor() {
+	[[ $(nvim --version >/dev/null 2>&1 && echo $?) ]] && echo 'nvim' && return
+	[[ $(vim --version >/dev/null 2>&1 && echo $?) ]] && return 'vim' && return
+	echo 'vi'
+}
+
+get_update_system_command() {
+	if command apt >/dev/null; then
+		command="sudo apt update && sudo apt upgrade --yes"
+	elif [[ $(uname) == "Darwin" ]]; then
+		command="brew update && brew upgrade"
+	else
+		command='echo "Unknown OS!, Cannot update automatically"'
+	fi
+
+	echo "$command && rustup update && cargo install-update -a"
+}
+
+alias vi="$(get_prefered_editor)"
 alias _='sudo '
 alias la='lsd -la'
 alias gss='git status'
@@ -66,8 +66,7 @@ alias gco='git checkout'
 alias gcmsg='git commit -S -m'
 alias grbi='git rebase -i'
 alias gcl='git clean -fdx'
-alias ghc='git clone https://github.com/' # TODO: how to append params here? Should be a function, right?
-alias sau='sudo apt update && sudo apt upgrade --yes && cargo install-update -a'
+alias sau="$(get_update_system_command)"
 alias sai='sudo apt install'
 alias htop='htop -d10'
 # Docker aliases
@@ -78,14 +77,12 @@ alias dpsa='docker ps --all'
 alias dc='docker-compose'
 
 # Sway config
-export BEMENU_BACKEND=wayland
-export MOZ_ENABLE_WAYLAND=1
-alias sway='export XKB_DEFAULT_LAYOUT=pl; export XKB_DEFAULT_MODEL=pc104; sway'
+#export BEMENU_BACKEND=wayland
+#export MOZ_ENABLE_WAYLAND=1
+#alias sway='export XKB_DEFAULT_LAYOUT=pl; export XKB_DEFAULT_MODEL=pc104; sway'
 
 # exports
-# export TERM=screen-256color # Should I even set this var?
-export EDITOR=nvim
-export XDG_CONFIG_HOME=~/.config
+# export XDG_CONFIG_HOME=~/.config
 
 # standard PATH adjustments
 export PATH="$HOME/.local/bin:$PATH"
@@ -102,13 +99,15 @@ source $HOME/.cargo/env
 #[ -s '$NVM_DIR/nvm.sh' ] && \. '$NVM_DIR/nvm.sh'
 
 # Sign my commits with a GPG key
-eval $(gpg-agent --daemon)
-export GPG_TTY=$(tty)
+#eval $(gpg-agent --daemon)
+#export GPG_TTY=$(tty)
 
 # SSH agent setup
 # Add `ssh-agent -s > ~/.ssh/active_agent.env` to your ~/.profile and after login execute `ssh-add`
 #eval '$(cat ~/.ssh/active_agent.env)'
 
 # WSL stuff
-alias edge='/mnt/c/Program\ Files\ \(x86\)/Microsoft/Edge/Application/msedge.exe'
+#alias edge='/mnt/c/Program\ Files\ \(x86\)/Microsoft/Edge/Application/msedge.exe'
 
+# MacOS stuff
+export PATH="$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
