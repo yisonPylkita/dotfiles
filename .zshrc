@@ -1,5 +1,7 @@
 # To keep your dotfiles in sync remember to make them hardlinks to yisonPylita/dotfiles repo
 
+# TODO: Make one-time setup script of environment
+
 # Skip all this for non-interactive shells
 [[ -z "$PS1" ]] && return
 
@@ -41,21 +43,21 @@ compinit -D
 
 # Aliases
 get_prefered_editor() {
-	[[ $(nvim --version >/dev/null 2>&1 && echo $?) ]] && echo 'nvim' && return
-	[[ $(vim --version >/dev/null 2>&1 && echo $?) ]] && return 'vim' && return
-	echo 'vi'
+    [[ $(nvim --version >/dev/null 2>&1 && echo $?) ]] && echo 'nvim' && return
+    [[ $(vim --version >/dev/null 2>&1 && echo $?) ]] && return 'vim' && return
+    echo 'vi'
 }
 
 get_update_system_command() {
-	if command apt >/dev/null; then
-		command="sudo apt update && sudo apt upgrade --yes"
-	elif [[ $(uname) == "Darwin" ]]; then
-		command="brew update && brew upgrade"
-	else
-		command='echo "Unknown OS!, Cannot update automatically"'
-	fi
+    if command -v apt &>/dev/null; then
+        command="sudo apt update && sudo apt upgrade --yes"
+    elif [[ $(uname) == "Darwin" ]]; then
+        command="brew update && brew upgrade"
+    else
+        command='echo "Unknown OS!, Cannot update automatically"'
+    fi
 
-	echo "$command && rustup update && cargo install-update -a"
+    echo "$command && rustup update && cargo install-update -a"
 }
 
 alias vi="$(get_prefered_editor)"
@@ -111,3 +113,11 @@ source $HOME/.cargo/env
 
 # MacOS stuff
 export PATH="$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
+
+# Homebrew on Linux
+# Run this one time
+#/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+#echo '# Set PATH, MANPATH, etc., for Homebrew.' >> "$HOME/.zprofile"
+#echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> "$HOME/.zprofile"
+
+[[ -f "/home/linuxbrew/.linuxbrew/bin/brew" ]] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
