@@ -34,9 +34,15 @@ setopt incappendhistory
 # fpath
 fpath+=~/.zfunc
 
+# Homebrew autocompletion
+if type brew &>/dev/null
+then
+  FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
+fi
+
 # Autocompletion
 autoload -Uz compinit
-compinit -D
+compinit
 
 # Don't pause terminal on Ctrl+S
 [[ $- != *i* ]] && return
@@ -121,3 +127,7 @@ export PATH="$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/b
 #echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> "$HOME/.zprofile"
 
 [[ -f "/home/linuxbrew/.linuxbrew/bin/brew" ]] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+
+# TODO: Consider adding Minikube envs
+# eval $(minikube -p minikube docker-env)
