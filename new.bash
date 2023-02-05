@@ -15,6 +15,12 @@
 
 set -e 
 
+RESTORE=$(echo -en '\033[0m]')
+RED=$(echo -en '\033[01;31m]')
+GREEN=$(echo -en '\033[01;32m]')
+BLUE=$(echo -en '\033[01;34m]')
+
+
 get_system_type() {
     if command -v apt &>/dev/null; then
         # shellcheck source=/dev/null
@@ -34,10 +40,10 @@ get_system_type() {
 }
 
 SYSTEM_TYPE="$(get_system_type)"
-echo "System type: $SYSTEM_TYPE"
+echo ${BLUE}"System type: $SYSTEM_TYPE"${RESTORE}
 
 if [[ $SYSTEM_TYPE == "MacOS" ]]; then
-    echo "Installing MacOS console developer tools"
+    echo ${BLUE}"Installing MacOS console developer tools"${RESTORE}
     xcode-select --install
 fi
 
@@ -46,14 +52,14 @@ install_homebrew() {
     if [[ $SYSTEM_TYPE == U* ]]; then
         eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
     elif [[ $SYSTEM_TYPE == "MacOS" ]]; then
-        echo "TODO: check this one"
+        echo ${BLUE}"TODO: check this one"${RESTORE}
         exit
     fi
 
     brew update && brew upgrade
 }
 
-echo "Updating system and installing Homebrew"
+echo ${BLUE}"Updating system and installing Homebrew"${RESTORE}
 if [[ $SYSTEM_TYPE == U* ]]; then
     sudo apt-get update &&
     sudo apt-get upgrade -y &&
@@ -72,36 +78,36 @@ sai() {
 }
 
 if [[ $SYSTEM_TYPE == U* ]]; then
-    echo "Installing usefull system packages"
+    echo ${BLUE}"Installing usefull system packages"${RESTORE}
     sai "zsh tmux cmake neovim build-essential pkg-config cmake openssl libssl-dev jq"
 fi
 
-echo "Install Rust toolchain"
+echo ${BLUE}"Install Rust toolchain"${RESTORE}
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 # shellcheck source=/dev/null
 source "$HOME/.cargo/env"
 
-echo "Install usefull Rust command line tools"
+echo ${BLUE}"Install usefull Rust command line tools"${RESTORE}
 cargo install starship --locked
 cargo install cargo-update --locked
 cargo install ripgrep --locked
 cargo install lsd --locked
 cargo install bat --locked
 
-echo "Install fzf"
+echo ${BLUE}"Install fzf"${RESTORE}
 git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
 ~/.fzf/install
 # shellcheck source=/dev/null
 source ~/.fzf.zsh
 
-echo "Setting up dot-files"
+echo ${BLUE}"Setting up dot-files"${RESTORE}
 git clone https://github.com/yisonPylkita/dotfiles ~/dotfiles &> /dev/null
 cp ~/dotfiles/.zshrc ~/.zshrc
 
-echo "Change shell to ZSH"
+echo ${BLUE}"Change shell to ZSH"${RESTORE}
 sudo chsh -s /usr/bin/zsh
 
-echo "For best expirience download patched Nerd Font"
-echo "Good one is: Caskaydia Cove Nerd Font"
+echo ${BLUE}"For best expirience download patched Nerd Font"${RESTORE}
+echo ${BLUE}"Good one is: Caskaydia Cove Nerd Font"${RESTORE}
 
-echo "All done. Now type zsh to login to your new expirience"
+echo ${BLUE}"All done. Now type zsh to login to your new expirience"${RESTORE}
