@@ -62,10 +62,9 @@ install_homebrew() {
 echo ${BLUE}"Updating system and installing Homebrew"${RESTORE}
 if [[ $SYSTEM_TYPE == U* ]]; then
     sudo apt-get update &&
-    sudo apt-get upgrade -y &&
+    sudo apt-get upgrade -y
     # TODO: decide if installing Homebrew by default is worth it
-    # install_homebrew
-    
+    # install_homebrew    
 elif [[ $SYSTEM_TYPE == "MacOS" ]]; then
     install_homebrew
 fi
