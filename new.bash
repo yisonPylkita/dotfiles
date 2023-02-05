@@ -97,7 +97,7 @@ echo ${BLUE}"Install fzf - this will require additional steps later "${RESTORE}
 git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
 
 echo ${BLUE}"Setting up dot-files"${RESTORE}
-git clone https://github.com/yisonPylkita/dotfiles ~/dotfiles &> /dev/null
+git clone https://github.com/yisonPylkita/dotfiles ~/dotfiles
 cp ~/dotfiles/.zshrc ~/.zshrc
 
 echo ${BLUE}"Change shell to ZSH"${RESTORE}
