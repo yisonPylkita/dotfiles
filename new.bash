@@ -13,8 +13,6 @@
 # To use call:
 # wget -O - https://raw.githubusercontent.com/yisonPylkita/dotfiles/master/new.bash | bash
 
-# Supported: [U20.04, U22.04, MacOS]
-
 set -e 
 
 get_system_type() {
@@ -36,8 +34,12 @@ get_system_type() {
 }
 
 SYSTEM_TYPE="$(get_system_type)"
-
 echo "System type: $SYSTEM_TYPE"
+
+if [[ $SYSTEM_TYPE == "MacOS" ]]; then
+    echo "Installing MacOS console developer tools"
+    xcode-select --install
+fi
 
 install_homebrew() {
     NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -96,5 +98,10 @@ echo "Setting up dot-files"
 git clone https://github.com/yisonPylkita/dotfiles ~/dotfiles &> /dev/null
 cp ~/dotfiles/.zshrc ~/.zshrc
 
+echo "Change shell to ZSH"
+sudo chsh -s /usr/bin/zsh
+
 echo "For best expirience download patched Nerd Font"
 echo "Good one is: Caskaydia Cove Nerd Font"
+
+echo "All done. Now type zsh to login to your new expirience"
