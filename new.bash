@@ -15,10 +15,10 @@
 
 set -e 
 
-RESTORE=$(echo -en '\033[0m]')
-RED=$(echo -en '\033[01;31m]')
-GREEN=$(echo -en '\033[01;32m]')
-BLUE=$(echo -en '\033[01;34m]')
+RESTORE=$(echo -en '\033[0m')
+RED=$(echo -en '\033[01;31m')
+GREEN=$(echo -en '\033[01;32m')
+BLUE=$(echo -en '\033[01;34m')
 
 
 get_system_type() {
