@@ -11,7 +11,7 @@
 # - MacOS
 #
 # To use call:
-# curl --proto '=https' --tlsv1.2 -sSf https://github.com/yisonPylkita/dotfiles/new.bash | bash
+# wget -O - https://raw.githubusercontent.com/yisonPylkita/dotfiles/master/new.bash | bash
 
 # Supported: [U20.04, U22.04, MacOS]
 
@@ -40,10 +40,15 @@ SYSTEM_TYPE="$(get_system_type)"
 echo "System type: $SYSTEM_TYPE"
 
 install_homebrew() {
-    HOMEBREW_INSTALL_FROM_API=1 NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" &&
-    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" &&
-    brew update &&
-    brew upgrade
+    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    if [[ $SYSTEM_TYPE == U* ]]; then
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    elif [[ $SYSTEM_TYPE == "MacOS" ]]; then
+        echo "TODO: check this one"
+        exit
+    fi
+
+    brew update && brew upgrade
 }
 
 echo "Updating system and installing Homebrew"
