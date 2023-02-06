@@ -95,6 +95,7 @@ cargo install bat --locked
 
 echo ${BLUE}"Install fzf - this will require additional steps later "${RESTORE}
 git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+~/.fzf/install --all --key-bindings --completion --no-update-rc
 
 echo ${BLUE}"Setting up dot-files"${RESTORE}
 git clone https://github.com/yisonPylkita/dotfiles ~/dotfiles
@@ -107,7 +108,3 @@ echo ${BLUE}"For best expirience download patched Nerd Font"${RESTORE}
 echo ${BLUE}"Good one is: Caskaydia Cove Nerd Font"${RESTORE}
 
 echo ${BLUE}"All done. Now type zsh to login to your new expirience"${RESTORE}
-
-echo "... and after that"
-echo ${RED}"Execute this command"${RESTORE}
-echo "~/.fzf/install --key-bindings --completion --no-update-rc"
