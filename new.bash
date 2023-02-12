@@ -88,11 +88,11 @@ source "$HOME/.cargo/env"
 
 echo ${BLUE}"Install usefull Rust command line tools"${RESTORE}
 cargo install cargo-quickinstall
-cargo quickinstall starship --locked
-cargo quickinstall cargo-update --locked
-cargo quickinstall ripgrep --locked
-cargo quickinstall lsd --locked
-cargo quickinstall bat --locked
+cargo quickinstall starship
+cargo quickinstall cargo-update
+cargo quickinstall ripgrep
+cargo quickinstall lsd
+cargo quickinstall bat
 
 echo ${BLUE}"Install fzf - this will require additional steps later "${RESTORE}
 git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
