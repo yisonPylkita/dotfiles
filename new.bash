@@ -87,11 +87,12 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source "$HOME/.cargo/env"
 
 echo ${BLUE}"Install usefull Rust command line tools"${RESTORE}
-cargo install starship --locked
-cargo install cargo-update --locked
-cargo install ripgrep --locked
-cargo install lsd --locked
-cargo install bat --locked
+cargo install cargo-quickinstall
+cargo quickinstall starship --locked
+cargo quickinstall cargo-update --locked
+cargo quickinstall ripgrep --locked
+cargo quickinstall lsd --locked
+cargo quickinstall bat --locked
 
 echo ${BLUE}"Install fzf - this will require additional steps later "${RESTORE}
 git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
