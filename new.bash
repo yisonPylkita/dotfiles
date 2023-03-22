@@ -15,6 +15,8 @@
 
 set -e 
 
+export DEBIAN_FRONTEND=noninteractive
+
 RESTORE=$(echo -en '\033[0m')
 RED=$(echo -en '\033[01;31m')
 GREEN=$(echo -en '\033[01;32m')
