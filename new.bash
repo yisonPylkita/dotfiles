@@ -11,7 +11,7 @@
 # - MacOS
 #
 # To use call:
-# wget -O - https://raw.githubusercontent.com/yisonPylkita/dotfiles/master/new.bash | bash
+# /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/yisonPylkita/dotfiles/master/new.bash)
 
 set -e 
 
@@ -24,7 +24,7 @@ BLUE=$(echo -en '\033[01;34m')
 
 
 get_system_type() {
-    if command -v apt &>/dev/null; then
+    if command -v apt-get &>/dev/null; then
         # shellcheck source=/dev/null
         source /etc/os-release
         if [[ $VERSION_ID == "20.04" ]]; then
