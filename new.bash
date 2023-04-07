@@ -54,8 +54,7 @@ install_homebrew() {
     if [[ $SYSTEM_TYPE == U* ]]; then
         eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
     elif [[ $SYSTEM_TYPE == "MacOS" ]]; then
-        echo ${BLUE}"TODO: check this one"${RESTORE}
-        exit
+        eval "$(/opt/homebrew/bin/brew shellenv)"
     fi
 
     brew update && brew upgrade
