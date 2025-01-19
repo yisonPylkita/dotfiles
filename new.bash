@@ -11,7 +11,7 @@
 # - MacOS
 #
 # To use call:
-# /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/yisonPylkita/dotfiles/master/new.bash)
+# /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/yisonPylkita/dotfiles/master/new.bash)"
 
 set -e 
 
@@ -45,8 +45,9 @@ SYSTEM_TYPE="$(get_system_type)"
 echo ${BLUE}"System type: $SYSTEM_TYPE"${RESTORE}
 
 if [[ $SYSTEM_TYPE == "MacOS" ]]; then
-    echo ${BLUE}"Installing MacOS console developer tools"${RESTORE}
-    xcode-select --install
+    # TODO: This crashes installation as xcode-select --install on alrady installed system will exit with error
+    # echo ${BLUE}"Installing MacOS console developer tools"${RESTORE}
+    # xcode-select --install
 fi
 
 install_homebrew() {
