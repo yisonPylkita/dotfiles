@@ -13,7 +13,7 @@
 # To use call:
 # /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/yisonPylkita/dotfiles/master/new.bash)"
 
-set -e 
+set -ex
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -44,14 +44,14 @@ get_system_type() {
 SYSTEM_TYPE="$(get_system_type)"
 echo ${BLUE}"System type: $SYSTEM_TYPE"${RESTORE}
 
-if [[ $SYSTEM_TYPE == "MacOS" ]]; then
+#if [[ $SYSTEM_TYPE == "MacOS" ]]; then
     # TODO: This crashes installation as xcode-select --install on alrady installed system will exit with error
     # echo ${BLUE}"Installing MacOS console developer tools"${RESTORE}
     # xcode-select --install
-fi
+#fi
 
 install_homebrew() {
-    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     if [[ $SYSTEM_TYPE == U* ]]; then
         eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
     elif [[ $SYSTEM_TYPE == "MacOS" ]]; then
@@ -105,7 +105,7 @@ git clone https://github.com/yisonPylkita/dotfiles ~/dotfiles
 cp ~/dotfiles/.zshrc ~/.zshrc
 
 echo ${BLUE}"Change shell to ZSH"${RESTORE}
-sudo chsh -s /usr/bin/zsh
+sudo chsh -s /bin/zsh
 
 echo ${BLUE}"For best expirience download patched Nerd Font"${RESTORE}
 echo ${BLUE}"Good one is: Caskaydia Cove Nerd Font"${RESTORE}
