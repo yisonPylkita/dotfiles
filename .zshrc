@@ -23,21 +23,29 @@
 #RPS1='$(~/.zsh_tools/prompt-rs --rprompt)'
 eval "$(starship init zsh)"
 
-# ZSH history settings
-HISTFILE=~/.zsh_history
-HISTSIZE=20000
-SAVEHIST=10000
-setopt appendhistory
-setopt sharehistory
-setopt incappendhistory
+# ZSH history settings - Never expire history
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=999999999            # Practically unlimited history in memory
+SAVEHIST=$HISTSIZE            # Match SAVEHIST to HISTSIZE
+setopt BANG_HIST              # Treat the '!' character specially during expansion
+setopt EXTENDED_HISTORY       # Write the ":start:elapsed;command" format
+setopt INC_APPEND_HISTORY     # Write to history file immediately, not when shell exits
+setopt SHARE_HISTORY          # Share history between all sessions
+setopt HIST_EXPIRE_DUPS_FIRST # Expire duplicate entries first when trimming history
+setopt HIST_IGNORE_DUPS       # Don't record an entry that was just recorded again
+setopt HIST_IGNORE_ALL_DUPS   # Delete old recorded entry if new entry is a duplicate
+setopt HIST_FIND_NO_DUPS      # Do not display a line previously found
+setopt HIST_IGNORE_SPACE      # Don't record an entry starting with a space
+setopt HIST_SAVE_NO_DUPS      # Don't write duplicate entries in the history file
+setopt HIST_REDUCE_BLANKS     # Remove superfluous blanks before recording entry
+setopt HIST_VERIFY            # Don't execute immediately upon history expansion
 
 # fpath
 fpath+=~/.zfunc
 
 # Homebrew autocompletion
-if type brew &>/dev/null
-then
-  FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
+if type brew &>/dev/null; then
+	FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
 fi
 
 # Autocompletion
@@ -49,27 +57,30 @@ compinit
 
 # Aliases
 get_prefered_editor() {
-    [[ $(nvim --version >/dev/null 2>&1 && echo $?) ]] && echo 'nvim' && return
-    [[ $(vim --version >/dev/null 2>&1 && echo $?) ]] && return 'vim' && return
-    echo 'vi'
+	[[ $(nvim --version >/dev/null 2>&1 && echo $?) ]] && echo 'nvim' && return
+	[[ $(vim --version >/dev/null 2>&1 && echo $?) ]] && echo 'vim' && return
+	echo 'vi'
 }
 
 get_update_system_command() {
-    if command -v apt &>/dev/null; then
-        command="sudo apt update && sudo apt upgrade --yes"
-    elif [[ $(uname) == "Darwin" ]]; then
-        command="brew update && brew upgrade"
-    else
-        command='echo "Unknown OS!, Cannot update automatically"'
-    fi
+	if command -v apt &>/dev/null; then
+		command="sudo apt update && sudo apt upgrade --yes"
+	elif [[ $(uname) == "Darwin" ]]; then
+		command="brew update && brew upgrade"
+	else
+		command='echo "Unknown OS!, Cannot update automatically"'
+	fi
 
-    echo "$command && rustup update && cargo install-update -a"
+	echo "$command && rustup update && cargo install-update -a"
 }
+
+alias git='LANG=en_US.UTF-8 git'
 
 alias vi="$(get_prefered_editor)"
 alias _='sudo '
 alias la='lsd -la'
 alias gss='git status'
+alias gpl='git pull'
 alias gco='git checkout'
 alias gcmsg='git commit -S -m'
 alias grbi='git rebase -i'
@@ -128,6 +139,91 @@ export PATH="$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/b
 
 [[ -f "/home/linuxbrew/.linuxbrew/bin/brew" ]] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
+alias gcm="git checkout main"
+
+alias cw="cd $HOME/work"
+alias crr="cd $HOME/work/renew"
+alias cr='git rev-parse --is-inside-work-tree >/dev/null 2>&1 && cd "$(git rev-parse --show-toplevel)"'
+alias ck='git rev-parse --is-inside-work-tree >/dev/null 2>&1 && cd "$(git rev-parse --show-toplevel)/backend/kernel"'
+alias cm='git rev-parse --is-inside-work-tree >/dev/null 2>&1 && cd "$(git rev-parse --show-toplevel)/backend/model_base"'
+alias cww="cd $HOME/work"
+
+export GIMME_DIR="$HOME/work/reenter/scripts/gimme"
+export GIMME_PYTHON="$GIMME_DIR/.venv/bin/python"
+export GIMME_SCRIPT="$GIMME_DIR/gimme.py"
 
 # TODO: Consider adding Minikube envs
 # eval $(minikube -p minikube docker-env)
+export JAVA_HOME="/Library/Java/JavaVirtualMachines/openjdk-17.jdk/Contents/Home"
+
+# HX
+export PATH="$HOME/.pyenv/bin:$PATH"
+eval "$(direnv hook zsh)"
+
+export PATH="$PATH:$HOME/.local/bin"
+
+# I should use fnm installed by backend/kernel/setup script
+#export NVM_LAZY_LOAD=true
+#source ~/.zsh-nvm/zsh-nvm.plugin.zsh
+
+export HX_LOG_COLOUR="ALWAYS"
+alias hx='bazel run //:hx --'
+
+export GOPATH=$HOME/go
+export PATH=$PATH:$GOPATH/bin
+
+[ -f "$HOME/.zsh_local" ] && source "$HOME/.zsh_local"
+
+export PATH="/opt/homebrew/opt/postgresql@13/bin:$PATH"
+export DOCKER_HOST='unix:///var/folders/pp/5474vyks5c3bnhy2qpkkqfkm0000gr/T/podman/podman-machine-default-api.sock'
+alias docker="podman"
+eval "$(fnm env --use-on-cd --shell zsh)"
+
+export LANG="en_US.UTF-8"
+export LC_ALL="en_US.UTF-8"
+
+# Added by Windsurf
+export PATH="/Users/wojciech.bartnik/.codeium/windsurf/bin:$PATH"
+
+alias code="windsurf"
+alias buu="brew update && brew upgrade"
+
+cd "$HOME/work/renew" || cd "$HOME"
+
+export BROWSER="open"
+
+alias kf='cargo fmt --all'
+alias kff="./scripts/local/fix.sh"
+alias kl='./scripts/lint.sh'
+alias ktu='cargo run -p scripts-tests -- \
+  --exact-feature ipc-of-status-via-shared-memory \
+  --exact-feature memory-access-is-checked \
+  --exact-feature share-resources-with-arc-rwlock \
+  --exact-feature store-full-strings-for-mismatching-values \
+  --exact-feature access-aws-via-rust-s3-sync \
+  --exact-feature legacy-python-setup \
+  --exclude-integration-tests --exclude-doc-tests \
+  -x hx-tester-runner'
+alias kti='cargo run -p scripts-tests -- \
+    --exact-feature ipc-of-status-via-shared-memory \
+    --exact-feature memory-access-is-checked \
+    --exact-feature share-resources-with-arc-rwlock \
+    --exact-feature store-full-strings-for-mismatching-values \
+    --exact-feature access-aws-via-rust-s3-sync \
+    --exact-feature legacy-python-setup \
+    --exclude-unit-tests \
+    --exclude-doc-tests \
+    --jobs 8'
+
+export HX_KERNEL_REENTER_DIRECTORY="/Users/wojciech.bartnik/work/reenter"
+
+
+loop() {
+  local count=0
+  while eval "$@"; do
+    ((count++))
+    echo "\n✓ Pass $count succeeded, running again..."
+  done
+  echo "\n✗ Failed after $count successful pass(es)."
+  return 1
+}
