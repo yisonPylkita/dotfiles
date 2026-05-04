@@ -141,40 +141,19 @@ export PATH="$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/b
 
 alias gcm="git checkout main"
 
-alias cw="cd $HOME/work"
-alias crr="cd $HOME/work/renew"
 alias cr='git rev-parse --is-inside-work-tree >/dev/null 2>&1 && cd "$(git rev-parse --show-toplevel)"'
-alias ck='git rev-parse --is-inside-work-tree >/dev/null 2>&1 && cd "$(git rev-parse --show-toplevel)/backend/kernel"'
-alias cm='git rev-parse --is-inside-work-tree >/dev/null 2>&1 && cd "$(git rev-parse --show-toplevel)/backend/model_base"'
-alias cww="cd $HOME/work"
 
-export GIMME_DIR="$HOME/work/reenter/scripts/gimme"
-export GIMME_PYTHON="$GIMME_DIR/.venv/bin/python"
-export GIMME_SCRIPT="$GIMME_DIR/gimme.py"
-
-# TODO: Consider adding Minikube envs
-# eval $(minikube -p minikube docker-env)
-export JAVA_HOME="/Library/Java/JavaVirtualMachines/openjdk-17.jdk/Contents/Home"
-
-# HX
 export PATH="$HOME/.pyenv/bin:$PATH"
 eval "$(direnv hook zsh)"
 
 export PATH="$PATH:$HOME/.local/bin"
 
-# I should use fnm installed by backend/kernel/setup script
 #export NVM_LAZY_LOAD=true
 #source ~/.zsh-nvm/zsh-nvm.plugin.zsh
-
-export HX_LOG_COLOUR="ALWAYS"
-alias hx='bazel run //:hx --'
 
 export GOPATH=$HOME/go
 export PATH=$PATH:$GOPATH/bin
 
-[ -f "$HOME/.zsh_local" ] && source "$HOME/.zsh_local"
-
-export PATH="/opt/homebrew/opt/postgresql@13/bin:$PATH"
 export DOCKER_HOST='unix:///var/folders/pp/5474vyks5c3bnhy2qpkkqfkm0000gr/T/podman/podman-machine-default-api.sock'
 alias docker="podman"
 eval "$(fnm env --use-on-cd --shell zsh)"
@@ -188,35 +167,7 @@ export PATH="/Users/wojciech.bartnik/.codeium/windsurf/bin:$PATH"
 alias code="windsurf"
 alias buu="brew update && brew upgrade"
 
-cd "$HOME/work/renew" || cd "$HOME"
-
 export BROWSER="open"
-
-alias kf='cargo fmt --all'
-alias kff="./scripts/local/fix.sh"
-alias kl='./scripts/lint.sh'
-alias ktu='cargo run -p scripts-tests -- \
-  --exact-feature ipc-of-status-via-shared-memory \
-  --exact-feature memory-access-is-checked \
-  --exact-feature share-resources-with-arc-rwlock \
-  --exact-feature store-full-strings-for-mismatching-values \
-  --exact-feature access-aws-via-rust-s3-sync \
-  --exact-feature legacy-python-setup \
-  --exclude-integration-tests --exclude-doc-tests \
-  -x hx-tester-runner'
-alias kti='cargo run -p scripts-tests -- \
-    --exact-feature ipc-of-status-via-shared-memory \
-    --exact-feature memory-access-is-checked \
-    --exact-feature share-resources-with-arc-rwlock \
-    --exact-feature store-full-strings-for-mismatching-values \
-    --exact-feature access-aws-via-rust-s3-sync \
-    --exact-feature legacy-python-setup \
-    --exclude-unit-tests \
-    --exclude-doc-tests \
-    --jobs 8'
-
-export HX_KERNEL_REENTER_DIRECTORY="/Users/wojciech.bartnik/work/reenter"
-
 
 loop() {
   local count=0
@@ -227,3 +178,6 @@ loop() {
   echo "\n✗ Failed after $count successful pass(es)."
   return 1
 }
+
+# Local / machine-specific overrides (not tracked)
+[ -f "$HOME/.zsh_local" ] && source "$HOME/.zsh_local"
