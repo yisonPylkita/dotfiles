@@ -1,0 +1,91 @@
+# ============================================================================
+# Alacritty config — macOS, Zellij-driven, fullscreen, Aura theme
+# ============================================================================
+
+[general]
+# Pull the Aura theme from the upstream repo (cloned below).
+import = [
+    "~/.config/alacritty/themes/themes/aura.toml",
+]
+# Reload config automatically when this file changes.
+live_config_reload = true
+
+# ----------------------------------------------------------------------------
+# Window
+# ----------------------------------------------------------------------------
+[window]
+decorations = "none"
+opacity = 1.0
+startup_mode = "SimpleFullscreen"
+option_as_alt = "Both"
+dynamic_title = true
+
+[window.padding]
+x = 0
+y = 0
+
+# ----------------------------------------------------------------------------
+# Font — CaskaydiaCove Nerd Font Mono
+# ----------------------------------------------------------------------------
+[font]
+size = 13.0
+
+[font.normal]
+family = "CaskaydiaCove Nerd Font Mono"
+style = "Regular"
+
+[font.bold]
+family = "CaskaydiaCove Nerd Font Mono"
+style = "Bold"
+
+[font.italic]
+family = "CaskaydiaCove Nerd Font Mono"
+style = "Italic"
+
+[font.bold_italic]
+family = "CaskaydiaCove Nerd Font Mono"
+style = "Bold Italic"
+
+# ----------------------------------------------------------------------------
+# Scrollback — big buffer, you have RAM to spare
+# ----------------------------------------------------------------------------
+[scrolling]
+history = 100000
+multiplier = 3
+
+# ----------------------------------------------------------------------------
+# Mouse
+# ----------------------------------------------------------------------------
+[mouse]
+hide_when_typing = true
+
+# ----------------------------------------------------------------------------
+# Cursor
+# ----------------------------------------------------------------------------
+[cursor]
+style = { shape = "Block", blinking = "On" }
+unfocused_hollow = true
+
+# ----------------------------------------------------------------------------
+# Shell — auto-attach to Zellij session "main"
+# ----------------------------------------------------------------------------
+[terminal.shell]
+program = "/bin/zsh"
+args = ["-l", "-c", "zellij attach -c main || zellij"]
+
+# ----------------------------------------------------------------------------
+# Keybindings
+# ----------------------------------------------------------------------------
+
+# Disable Cmd+N (new window) — single-window experience.
+[[keyboard.bindings]]
+key = "N"
+mods = "Command"
+action = "ReceiveChar"
+
+# Disable Cmd+T just in case (no-op anyway, but explicit).
+[[keyboard.bindings]]
+key = "T"
+mods = "Command"
+action = "ReceiveChar"
+

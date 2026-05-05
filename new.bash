@@ -4,13 +4,10 @@
 # TODO: Check on Ubuntu 22.04
 # TODO: Check on MacOS
 
-# Script for setting up new Unix environment. Installing and configuring stuff.
-# Supported distros:
-# - Ubuntu 20.04
-# - Ubuntu 22.04
-# - MacOS
+# Script for setting up a new Unix environment.
+# Supported: Ubuntu 20.04, Ubuntu 22.04, MacOS
 #
-# To use call:
+# Usage:
 # /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/yisonPylkita/dotfiles/master/new.bash)"
 
 set -ex
@@ -18,8 +15,6 @@ set -ex
 export DEBIAN_FRONTEND=noninteractive
 
 RESTORE=$(echo -en '\033[0m')
-RED=$(echo -en '\033[01;31m')
-GREEN=$(echo -en '\033[01;32m')
 BLUE=$(echo -en '\033[01;34m')
 
 
@@ -42,16 +37,12 @@ get_system_type() {
 }
 
 SYSTEM_TYPE="$(get_system_type)"
-echo ${BLUE}"System type: $SYSTEM_TYPE"${RESTORE}
-
-#if [[ $SYSTEM_TYPE == "MacOS" ]]; then
-    # TODO: This crashes installation as xcode-select --install on alrady installed system will exit with error
-    # echo ${BLUE}"Installing MacOS console developer tools"${RESTORE}
-    # xcode-select --install
-#fi
+echo "${BLUE}System type: $SYSTEM_TYPE${RESTORE}"
 
 install_homebrew() {
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    if ! command -v brew &>/dev/null; then
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    fi
     if [[ $SYSTEM_TYPE == U* ]]; then
         eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
     elif [[ $SYSTEM_TYPE == "MacOS" ]]; then
@@ -61,53 +52,83 @@ install_homebrew() {
     brew update && brew upgrade
 }
 
-echo ${BLUE}"Updating system and installing Homebrew"${RESTORE}
+echo "${BLUE}Updating system and installing Homebrew${RESTORE}"
 if [[ $SYSTEM_TYPE == U* ]]; then
     sudo apt-get update && NEEDRESTART_MODE=a sudo apt-get upgrade -y
-    # TODO: decide if installing Homebrew by default is worth it
-    # install_homebrew    
 elif [[ $SYSTEM_TYPE == "MacOS" ]]; then
     install_homebrew
 fi
 
-sai() {
-    if [[ $SYSTEM_TYPE == U* ]]; then
-        sudo apt-get install $1 -y
-    elif [[ $SYSTEM_TYPE == "MacOS" ]]; then
-        yes | brew install $1 
-    fi  
-}
-
 if [[ $SYSTEM_TYPE == U* ]]; then
-    echo ${BLUE}"Installing usefull system packages"${RESTORE}
-    sai "zsh tmux cmake neovim build-essential pkg-config cmake openssl libssl-dev jq"
+    echo "${BLUE}Installing system packages (apt)${RESTORE}"
+    sudo apt-get install -y \
+        zsh fish tmux cmake neovim build-essential pkg-config openssl libssl-dev \
+        jq fzf direnv
 fi
 
-echo ${BLUE}"Install Rust toolchain"${RESTORE}
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+if [[ $SYSTEM_TYPE == "MacOS" ]]; then
+    echo "${BLUE}Installing CLI tools (brew)${RESTORE}"
+    brew install \
+        zsh fish tmux neovim jq fzf starship direnv fnm pyenv podman \
+        lsd bat ripgrep gitui htop zellij
+
+    echo "${BLUE}Installing GUI apps (brew --cask)${RESTORE}"
+    brew install --cask alacritty
+fi
+
+echo "${BLUE}Installing Rust toolchain${RESTORE}"
+if ! command -v cargo &>/dev/null; then
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+fi
 # shellcheck source=/dev/null
 source "$HOME/.cargo/env"
 
-echo ${BLUE}"Install usefull Rust command line tools"${RESTORE}
+echo "${BLUE}Installing useful Rust command-line tools${RESTORE}"
 cargo install cargo-quickinstall
-cargo quickinstall starship
 cargo quickinstall cargo-update
-cargo quickinstall ripgrep
-cargo quickinstall lsd
-cargo quickinstall bat
+if [[ $SYSTEM_TYPE == U* ]]; then
+    # macOS gets these via brew above
+    cargo quickinstall starship
+    cargo quickinstall ripgrep
+    cargo quickinstall lsd
+    cargo quickinstall bat
+fi
 
-echo ${BLUE}"Install fzf - this will require additional steps later "${RESTORE}
-git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
-~/.fzf/install --all --key-bindings --completion --no-update-rc
+echo "${BLUE}Setting up dotfiles${RESTORE}"
+if [[ ! -d "$HOME/dotfiles" ]]; then
+    git clone https://github.com/yisonPylkita/dotfiles "$HOME/dotfiles"
+fi
 
-echo ${BLUE}"Setting up dot-files"${RESTORE}
-git clone https://github.com/yisonPylkita/dotfiles ~/dotfiles
-cp ~/dotfiles/.zshrc ~/.zshrc
+# Top-level config files
+cp "$HOME/dotfiles/.zshrc"     "$HOME/.zshrc"
+cp "$HOME/dotfiles/.tmux.conf" "$HOME/.tmux.conf"
+cp "$HOME/dotfiles/.vimrc"     "$HOME/.vimrc"
 
-echo ${BLUE}"Change shell to ZSH"${RESTORE}
-sudo chsh -s /bin/zsh
+# XDG configs
+mkdir -p "$HOME/.config/fish" "$HOME/.config/alacritty" "$HOME/.config/zellij" "$HOME/.config/nvim"
+cp "$HOME/dotfiles/.config/fish/config.fish"          "$HOME/.config/fish/config.fish"
+cp "$HOME/dotfiles/.config/alacritty/alacritty.toml"  "$HOME/.config/alacritty/alacritty.toml"
+cp "$HOME/dotfiles/.config/zellij/config.kdl"         "$HOME/.config/zellij/config.kdl"
+cp "$HOME/dotfiles/nvim/init.vim"                     "$HOME/.config/nvim/init.vim"
 
-echo ${BLUE}"For best expirience download patched Nerd Font"${RESTORE}
-echo ${BLUE}"Good one is: Caskaydia Cove Nerd Font"${RESTORE}
+echo "${BLUE}Cloning Alacritty theme repo${RESTORE}"
+if [[ ! -d "$HOME/.config/alacritty/themes" ]]; then
+    git clone https://github.com/alacritty/alacritty-theme "$HOME/.config/alacritty/themes"
+fi
 
-echo ${BLUE}"All done. Now type zsh to login to your new expirience"${RESTORE}
+if [[ $SYSTEM_TYPE == U* ]]; then
+    echo "${BLUE}Setting up fzf shell integration (Ubuntu)${RESTORE}"
+    if [[ ! -d "$HOME/.fzf" ]]; then
+        git clone --depth 1 https://github.com/junegunn/fzf.git "$HOME/.fzf"
+        "$HOME/.fzf/install" --all --key-bindings --completion --no-update-rc
+    fi
+fi
+
+echo "${BLUE}Default shell stays as zsh. To switch to fish later: chsh -s \$(which fish)${RESTORE}"
+ZSH_BIN="$(command -v zsh)"
+if [[ "$SHELL" != "$ZSH_BIN" ]]; then
+    sudo chsh -s "$ZSH_BIN" "$USER"
+fi
+
+echo "${BLUE}For best experience download a patched Nerd Font (e.g., CaskaydiaCove Nerd Font)${RESTORE}"
+echo "${BLUE}All done. Type 'zsh' (or 'fish' to try fish) to launch your shell.${RESTORE}"
