@@ -67,7 +67,6 @@ alias dps 'docker ps'
 alias dpsa 'docker ps --all'
 alias dc docker-compose
 alias docker podman
-alias code windsurf
 alias buu 'brew update && brew upgrade'
 
 function loop --description 'run a command repeatedly while it succeeds'

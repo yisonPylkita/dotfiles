@@ -1,0 +1,14 @@
+{
+  "name": "pi-extensions",
+  "private": true,
+  "dependencies": {
+    "@eko24ive/pi-ask": "^1.0.2",
+    "pi-lens": "^3.8.50",
+    "pi-rtk-optimizer": "^0.8.2",
+    "pi-sensitive-guard": "^0.4.2",
+    "pi-subagents": "^0.28.0"
+  },
+  "allowScripts": {
+    "pi-lens@3.8.50": true
+  }
+}

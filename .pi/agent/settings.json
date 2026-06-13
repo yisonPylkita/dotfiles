@@ -1,0 +1,13 @@
+{
+  "lastChangelogVersion": "0.79.3",
+  "defaultProvider": "deepseek",
+  "defaultModel": "deepseek-v4-flash",
+  "defaultThinkingLevel": "high",
+  "packages": [
+    "npm:pi-lens",
+    "npm:pi-rtk-optimizer",
+    "npm:@eko24ive/pi-ask",
+    "npm:pi-sensitive-guard",
+    "npm:pi-subagents"
+  ]
+}

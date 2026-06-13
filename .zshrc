@@ -164,7 +164,7 @@ export LC_ALL="en_US.UTF-8"
 # Added by Windsurf
 export PATH="/Users/wojciech.bartnik/.codeium/windsurf/bin:$PATH"
 
-alias code="windsurf"
+# code resolves to VS Code via PATH (/Applications/Visual Studio Code.app/.../bin/code)
 alias buu="brew update && brew upgrade"
 
 export BROWSER="open"
