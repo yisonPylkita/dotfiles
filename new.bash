@@ -28,7 +28,7 @@ while (( $# > 0 )); do
 			shift
 			;;
 		--help|-h)
-			printf 'Usage: %s [--gui]\n' "$0"
+			printf 'Usage: new.bash [--gui]\n'
 			exit 0
 			;;
 		*)
