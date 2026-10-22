@@ -115,6 +115,10 @@ alias dc='docker-compose'
 path=("$HOME/.local/share/mise/shims" "$HOME/.local/bin" $path)
 
 # fzf - commands history fuzzy finder. Also interactive files searcher
+# Prefer the cloned fzf (with shell integration) over an older system package.
+if [[ -d "$HOME/.fzf/bin" ]]; then
+	path=("$HOME/.fzf/bin" $path)
+fi
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 # Rust

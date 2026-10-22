@@ -55,6 +55,10 @@ end
 test -f $HOME/.cargo/env.fish; and source $HOME/.cargo/env.fish
 
 # Integrations
+# Prefer the cloned fzf (with shell integration) over an older system package.
+if test -d $HOME/.fzf/bin
+    fish_add_path --prepend $HOME/.fzf/bin
+end
 if type -q fzf
     if fzf --fish >/dev/null 2>&1
         fzf --fish | source
