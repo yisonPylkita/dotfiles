@@ -135,6 +135,12 @@ if [[ $SYSTEM_TYPE == "MacOS" ]]; then
 				hdiutil detach "$alacritty_tmp/mnt" -quiet
 				rm -rf "$alacritty_tmp"
 			fi
+
+			# Reproduce the cask's command and terminfo links.
+			ln -sf /Applications/Alacritty.app/Contents/MacOS/alacritty "$(brew --prefix)/bin/alacritty"
+			mkdir -p "$HOME/.terminfo/61"
+			ln -sf /Applications/Alacritty.app/Contents/Resources/61/alacritty "$HOME/.terminfo/61/alacritty"
+			ln -sf /Applications/Alacritty.app/Contents/Resources/61/alacritty-direct "$HOME/.terminfo/61/alacritty-direct"
 		fi
 	fi
 	brew list --cask codex >/dev/null 2>&1 || brew install --cask codex
