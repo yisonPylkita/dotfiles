@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 
-# TODO: Check on Ubuntu 20.04
-# TODO: Check on Ubuntu 22.04
-# TODO: Check on MacOS
-
 # Script for setting up a new Unix environment.
-# Supported: Ubuntu 20.04, Ubuntu 22.04, MacOS
+# Supported: Ubuntu 22.04/24.04/26.04 LTS and macOS.
+#
+# By default this installs CLI/server tooling only. Pass --gui to also install
+# GUI extras (Alacritty and the Nerd Font).
 #
 # mise is the developer-runtime owner: python, node, deno, uv, direnv and
 # the pi coding agent are installed and pinned through mise (see the
@@ -17,7 +16,27 @@
 # repo (dry-run by default; pass --apply to actually delete).
 #
 # Usage:
-# /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/yisonPylkita/dotfiles/main/new.bash)"
+#   bash new.bash
+#   bash new.bash --gui
+#   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/yisonPylkita/dotfiles/main/new.bash)"
+
+GUI_SETUP=false
+while (( $# > 0 )); do
+	case "$1" in
+		--gui)
+			GUI_SETUP=true
+			shift
+			;;
+		--help|-h)
+			printf 'Usage: %s [--gui]\n' "$0"
+			exit 0
+			;;
+		*)
+			printf 'Unknown option: %s\n' "$1" >&2
+			exit 64
+			;;
+	esac
+done
 
 set -ex
 
@@ -42,14 +61,15 @@ get_system_type() {
 	elif command -v apt-get &>/dev/null; then
 		# shellcheck source=/dev/null
 		source /etc/os-release
-		if [[ $ID == "ubuntu" && $VERSION_ID == "20.04" ]]; then
-			echo "U20.04"
-		elif [[ $ID == "ubuntu" && $VERSION_ID == "22.04" ]]; then
-			echo "U22.04"
-		else
-			printf 'Unsupported distribution: %s %s\n' "$ID" "$VERSION_ID" >&2
-			return 1
-		fi
+		case "$ID:$VERSION_ID" in
+			ubuntu:22.04|ubuntu:24.04|ubuntu:26.04)
+				echo "U${VERSION_ID}"
+				;;
+			*)
+				printf 'Unsupported distribution: %s %s\n' "$ID" "$VERSION_ID" >&2
+				return 1
+				;;
+		esac
 	else
 		printf 'Unsupported system\n' >&2
 		return 1
@@ -85,18 +105,32 @@ if [[ $SYSTEM_TYPE == U* ]]; then
 	echo "${BLUE}Installing system packages (apt)${RESTORE}"
 	sudo apt-get install -y \
 		zsh fish tmux cmake neovim build-essential pkg-config openssl libssl-dev \
-		jq fzf curl git ca-certificates unzip fontconfig
+		jq fzf curl git git-lfs htop ca-certificates unzip fontconfig
+
+	if [[ "$GUI_SETUP" == true ]]; then
+		echo "${BLUE}Installing GUI terminal (apt)${RESTORE}"
+		sudo apt-get install -y alacritty || echo "${BLUE}Alacritty is unavailable; skipping.${RESTORE}"
+	fi
 fi
 
 if [[ $SYSTEM_TYPE == "MacOS" ]]; then
 	echo "${BLUE}Installing CLI tools (brew)${RESTORE}"
 	brew install \
-		zsh fish tmux neovim jq fzf starship podman \
+		zsh fish tmux neovim jq fzf starship podman git-lfs \
 		lsd bat ripgrep gitui htop zellij
 
-	echo "${BLUE}Installing GUI apps (brew --cask)${RESTORE}"
-	brew install --cask alacritty
+	if [[ "$GUI_SETUP" == true ]]; then
+		echo "${BLUE}Installing GUI apps (brew --cask)${RESTORE}"
+		brew install --cask alacritty
+	fi
 	brew list --cask codex >/dev/null 2>&1 || brew install --cask codex
+fi
+
+if ! git config --global --get init.defaultBranch >/dev/null 2>&1; then
+	git config --global init.defaultBranch main
+fi
+if command -v git-lfs >/dev/null 2>&1; then
+	git lfs install
 fi
 
 echo "${BLUE}Installing mise (developer-runtime owner)${RESTORE}"
@@ -172,6 +206,11 @@ fi
 # Link Zsh files; reruns preserve the links and back up differing local files.
 bash "$HOME/dotfiles/setup-zsh.sh"
 
+# Seed local overrides/secrets without overwriting an existing file.
+if [[ ! -e "$HOME/.zsh_local" && -f "$HOME/dotfiles/.zsh_local.example" ]]; then
+	install -m 600 "$HOME/dotfiles/.zsh_local.example" "$HOME/.zsh_local"
+fi
+
 # Other top-level config files
 cp "$HOME/dotfiles/.tmux.conf" "$HOME/.tmux.conf"
 cp "$HOME/dotfiles/.vimrc" "$HOME/.vimrc"
@@ -193,15 +232,19 @@ cp "$HOME/dotfiles/.pi/agent/extensions/pi-rtk-optimizer/config.json" "$HOME/.pi
 (cd "$HOME/.pi/agent" && npm install --ignore-scripts &>/dev/null) || true
 
 # XDG configs
-mkdir -p "$HOME/.config/fish" "$HOME/.config/alacritty" "$HOME/.config/zellij" "$HOME/.config/nvim"
+mkdir -p "$HOME/.config/fish" "$HOME/.config/zellij" "$HOME/.config/nvim"
 cp "$HOME/dotfiles/.config/fish/config.fish" "$HOME/.config/fish/config.fish"
-cp "$HOME/dotfiles/.config/alacritty/alacritty.toml" "$HOME/.config/alacritty/alacritty.toml"
 cp "$HOME/dotfiles/.config/zellij/config.kdl" "$HOME/.config/zellij/config.kdl"
 cp "$HOME/dotfiles/nvim/init.vim" "$HOME/.config/nvim/init.vim"
 
-echo "${BLUE}Cloning Alacritty theme repo${RESTORE}"
-if [[ ! -d "$HOME/.config/alacritty/themes" ]]; then
-	git clone https://github.com/alacritty/alacritty-theme "$HOME/.config/alacritty/themes"
+if [[ "$GUI_SETUP" == true ]]; then
+	mkdir -p "$HOME/.config/alacritty"
+	cp "$HOME/dotfiles/.config/alacritty/alacritty.toml" "$HOME/.config/alacritty/alacritty.toml"
+
+	echo "${BLUE}Cloning Alacritty theme repo${RESTORE}"
+	if [[ ! -d "$HOME/.config/alacritty/themes" ]]; then
+		git clone https://github.com/alacritty/alacritty-theme "$HOME/.config/alacritty/themes"
+	fi
 fi
 
 if [[ $SYSTEM_TYPE == U* ]]; then
@@ -218,7 +261,6 @@ if [[ "$SHELL" != "$ZSH_BIN" ]]; then
 	sudo chsh -s "$ZSH_BIN" "$USER"
 fi
 
-echo "${BLUE}Installing CaskaydiaCove Nerd Font${RESTORE}"
 install_nerd_font() {
 	if [[ $SYSTEM_TYPE == "MacOS" ]]; then
 		brew install --cask font-caskaydia-cove-nerd-font 2>/dev/null || echo "${BLUE}  Font already installed, skipping.${RESTORE}"
@@ -234,7 +276,11 @@ install_nerd_font() {
 		echo "${BLUE}  Font cache updated.${RESTORE}"
 	fi
 }
-install_nerd_font
+
+if [[ "$GUI_SETUP" == true ]]; then
+	echo "${BLUE}Installing CaskaydiaCove Nerd Font${RESTORE}"
+	install_nerd_font
+fi
 
 # ============================================
 # SSH key bootstrap — generate if not present
