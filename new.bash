@@ -18,7 +18,8 @@
 # Usage:
 #   bash new.bash
 #   bash new.bash --gui
-#   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/yisonPylkita/dotfiles/main/new.bash)"
+#   bash <(curl -fsSL https://yisonpylkita.github.io/new.bash)
+#   bash <(curl -fsSL https://yisonpylkita.github.io/new.bash) --gui
 
 GUI_SETUP=false
 while (( $# > 0 )); do
