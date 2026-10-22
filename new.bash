@@ -121,7 +121,21 @@ if [[ $SYSTEM_TYPE == "MacOS" ]]; then
 
 	if [[ "$GUI_SETUP" == true ]]; then
 		echo "${BLUE}Installing GUI apps (brew --cask)${RESTORE}"
-		brew install --cask alacritty
+		if ! brew install --cask alacritty; then
+			# Homebrew disabled the Alacritty cask on 2026-09-01. Fall back to
+			# the official GitHub release, which passes Gatekeeper on macOS 26.
+			echo "${BLUE}Homebrew cask unavailable; installing Alacritty from GitHub...${RESTORE}"
+			if [[ ! -d "/Applications/Alacritty.app" ]]; then
+				alacritty_version=0.17.0
+				alacritty_tmp="$(mktemp -d)"
+				mkdir -p "$alacritty_tmp/mnt"
+				curl -fL "https://github.com/alacritty/alacritty/releases/download/v${alacritty_version}/Alacritty-v${alacritty_version}.dmg" -o "$alacritty_tmp/Alacritty.dmg"
+				hdiutil attach -nobrowse -quiet -mountpoint "$alacritty_tmp/mnt" "$alacritty_tmp/Alacritty.dmg"
+				sudo cp -R "$alacritty_tmp/mnt/Alacritty.app" /Applications/
+				hdiutil detach "$alacritty_tmp/mnt" -quiet
+				rm -rf "$alacritty_tmp"
+			fi
+		fi
 	fi
 	brew list --cask codex >/dev/null 2>&1 || brew install --cask codex
 fi
