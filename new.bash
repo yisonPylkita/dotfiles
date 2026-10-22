@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
 # TODO: Check on Ubuntu 20.04
 # TODO: Check on Ubuntu 22.04
@@ -7,8 +7,17 @@
 # Script for setting up a new Unix environment.
 # Supported: Ubuntu 20.04, Ubuntu 22.04, MacOS
 #
+# mise is the developer-runtime owner: python, node, deno, uv, direnv and
+# the pi coding agent are installed and pinned through mise (see the
+# MISE_*_VERSION variables below). rustup is the documented exception.
+# Homebrew stays available for CLI/GUI tools but no longer owns runtimes.
+#
+# Legacy-tool cleanup on EXISTING machines (nvm, fnm, pyenv, standalone uv,
+# uv/npm caches) is NOT done here — see migrate-mise-cleanup.bash in this
+# repo (dry-run by default; pass --apply to actually delete).
+#
 # Usage:
-# /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/yisonPylkita/dotfiles/master/new.bash)"
+# /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/yisonPylkita/dotfiles/main/new.bash)"
 
 set -ex
 
@@ -17,21 +26,33 @@ export DEBIAN_FRONTEND=noninteractive
 RESTORE=$(echo -en '\033[0m')
 BLUE=$(echo -en '\033[01;34m')
 
+# Tool versions managed by mise — single source of truth; keep in sync with
+# the live ~/.config/mise/config.toml on the reference machine
+MISE_PYTHON_VERSION=3.14.6
+MISE_NODE_VERSION=26.6.0
+MISE_DENO_VERSION=2.9.4
+MISE_UV_VERSION=0.9.26
+MISE_DIRENV_VERSION=2.37.1
+MISE_PI_VERSION=0.83.0
+MISE_CODEX_VERSION=0.163.0 # Ubuntu; macOS uses the Homebrew cask
+
 get_system_type() {
-	if command -v apt-get &>/dev/null; then
+	if [[ $(uname) == "Darwin" ]]; then
+		echo "MacOS"
+	elif command -v apt-get &>/dev/null; then
 		# shellcheck source=/dev/null
 		source /etc/os-release
-		if [[ $VERSION_ID == "20.04" ]]; then
+		if [[ $ID == "ubuntu" && $VERSION_ID == "20.04" ]]; then
 			echo "U20.04"
-		elif [[ $VERSION_ID == "22.04" ]]; then
+		elif [[ $ID == "ubuntu" && $VERSION_ID == "22.04" ]]; then
 			echo "U22.04"
 		else
-			echo "Unsupported Ubuntu distro: $VERSION_ID" && exit
+			printf 'Unsupported distribution: %s %s\n' "$ID" "$VERSION_ID" >&2
+			return 1
 		fi
-	elif [[ $(uname) == "Darwin" ]]; then
-		echo "MacOS"
 	else
-		echo "Unsupported system" && exit
+		printf 'Unsupported system\n' >&2
+		return 1
 	fi
 }
 
@@ -42,11 +63,13 @@ install_homebrew() {
 	if ! command -v brew &>/dev/null; then
 		/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 	fi
-	if [[ $SYSTEM_TYPE == U* ]]; then
-		eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-	elif [[ $SYSTEM_TYPE == "MacOS" ]]; then
-		eval "$(/opt/homebrew/bin/brew shellenv)"
-	fi
+	# Both Apple Silicon and Intel installations may be missing from PATH.
+	for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew /home/linuxbrew/.linuxbrew/bin/brew; do
+		if [[ -x "$brew_bin" ]]; then
+			eval "$("$brew_bin" shellenv)"
+			break
+		fi
+	done
 
 	brew update && brew upgrade
 }
@@ -62,23 +85,52 @@ if [[ $SYSTEM_TYPE == U* ]]; then
 	echo "${BLUE}Installing system packages (apt)${RESTORE}"
 	sudo apt-get install -y \
 		zsh fish tmux cmake neovim build-essential pkg-config openssl libssl-dev \
-		jq fzf direnv
+		jq fzf curl git ca-certificates unzip fontconfig
 fi
 
 if [[ $SYSTEM_TYPE == "MacOS" ]]; then
 	echo "${BLUE}Installing CLI tools (brew)${RESTORE}"
 	brew install \
-		zsh fish tmux neovim jq fzf starship direnv fnm pyenv podman \
+		zsh fish tmux neovim jq fzf starship podman \
 		lsd bat ripgrep gitui htop zellij
-
-	echo "${BLUE}Installing Pi AI coding assistant${RESTORE}"
-	npm install -g --ignore-scripts @earendil-works/pi-coding-agent
 
 	echo "${BLUE}Installing GUI apps (brew --cask)${RESTORE}"
 	brew install --cask alacritty
+	brew list --cask codex >/dev/null 2>&1 || brew install --cask codex
+fi
+
+echo "${BLUE}Installing mise (developer-runtime owner)${RESTORE}"
+if ! command -v mise &>/dev/null; then
+	if [[ $SYSTEM_TYPE == "MacOS" ]]; then
+		brew install mise
+	elif [[ $SYSTEM_TYPE == U* ]]; then
+		# Official installer — same curl|sh pattern as rustup below
+		curl -fsSL https://mise.run | sh
+	fi
+fi
+# Resolve the mise binary (Linux installs to ~/.local/bin) and the tool
+# shims for the remainder of this non-interactive script.
+export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.local/share/mise/shims:$PATH"
+
+echo "${BLUE}Pinning developer runtimes via mise${RESTORE}"
+mise use -g \
+	"python@$MISE_PYTHON_VERSION" \
+	"node@$MISE_NODE_VERSION" \
+	"deno@$MISE_DENO_VERSION" \
+	"uv@$MISE_UV_VERSION" \
+	"direnv@$MISE_DIRENV_VERSION"
+mise use -g "npm:@earendil-works/pi-coding-agent@$MISE_PI_VERSION"
+mise install
+
+if [[ $SYSTEM_TYPE == U* ]]; then
+	echo "${BLUE}Installing Codex CLI through mise${RESTORE}"
+	mise use -g "npm:@openai/codex@$MISE_CODEX_VERSION"
+	mise install
 fi
 
 echo "${BLUE}Installing Rust toolchain${RESTORE}"
+# rustup: documented exception — not managed by mise
 if ! command -v cargo &>/dev/null; then
 	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 fi
@@ -117,19 +169,27 @@ else
 	fi
 fi
 
-# Top-level config files
-cp "$HOME/dotfiles/.zshrc" "$HOME/.zshrc"
+# Link Zsh files; reruns preserve the links and back up differing local files.
+bash "$HOME/dotfiles/setup-zsh.sh"
+
+# Other top-level config files
 cp "$HOME/dotfiles/.tmux.conf" "$HOME/.tmux.conf"
 cp "$HOME/dotfiles/.vimrc" "$HOME/.vimrc"
+
+# DeepSeek worker delegation is configured separately in ~/.codex (ds-worker);
+# this bootstrap does not install a separate DeepSeek Codex home.
 
 # Pi AI coding assistant config
 mkdir -p "$HOME/.pi/agent/npm" "$HOME/.pi/agent/extensions/pi-rtk-optimizer"
 cp "$HOME/dotfiles/.pi/agent/settings.json" "$HOME/.pi/agent/settings.json"
-cp "$HOME/dotfiles/.pi/agent/trust.json" "$HOME/.pi/agent/trust.json"
+if [[ ! -e "$HOME/.pi/agent/trust.json" ]]; then
+	cp "$HOME/dotfiles/.pi/agent/trust.json" "$HOME/.pi/agent/trust.json"
+fi
 cp "$HOME/dotfiles/.pi/agent/npm/package.json" "$HOME/.pi/agent/npm/package.json"
 cp "$HOME/dotfiles/.pi/agent/extensions/eko24ive-pi-ask.json" "$HOME/.pi/agent/extensions/eko24ive-pi-ask.json"
 cp "$HOME/dotfiles/.pi/agent/extensions/pi-rtk-optimizer/config.json" "$HOME/.pi/agent/extensions/pi-rtk-optimizer/config.json"
-# Install pi extension dependencies silently
+# Install pi extension dependencies silently (npm resolves to the
+# mise-managed node/npm via the shims PATH exported above)
 (cd "$HOME/.pi/agent" && npm install --ignore-scripts &>/dev/null) || true
 
 # XDG configs
@@ -160,7 +220,6 @@ fi
 
 echo "${BLUE}Installing CaskaydiaCove Nerd Font${RESTORE}"
 install_nerd_font() {
-	local FONT_NAME="CaskaydiaCove Nerd Font Mono"
 	if [[ $SYSTEM_TYPE == "MacOS" ]]; then
 		brew install --cask font-caskaydia-cove-nerd-font 2>/dev/null || echo "${BLUE}  Font already installed, skipping.${RESTORE}"
 	elif [[ $SYSTEM_TYPE == U* ]]; then

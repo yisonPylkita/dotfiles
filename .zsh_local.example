@@ -1,0 +1,16 @@
+# Copy this file to ~/.zsh_local, then run:
+#   chmod 600 ~/.zsh_local
+#
+# This file is for machine-specific shell settings and local API keys.
+# It is loaded only by interactive Zsh and must never be committed.
+
+# --- Secrets ---------------------------------------------------------------
+# Keep only keys needed by interactive shell commands here.
+# Tool-specific credentials (Codex, Pi, GitHub, OpenCode) belong in their
+# own credential stores; do not duplicate them here unless a shell command
+# genuinely needs the environment variable.
+
+# export OPENROUTER_API_KEY='...'
+
+# --- Machine-specific settings --------------------------------------------
+# export DOCKER_HOST='unix:///path/to/podman.sock'

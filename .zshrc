@@ -1,9 +1,15 @@
-# To keep your dotfiles in sync remember to make them hardlinks to yisonPylita/dotfiles repo
-
-# TODO: Make one-time setup script of environment
+# Shared interactive settings. setup-zsh.sh links this file into your home.
+# Credentials and machine-specific overrides belong in ~/.zsh_local (ignored).
 
 # Skip all this for non-interactive shells
-[[ -z "$PS1" ]] && return
+[[ -o interactive ]] || return
+typeset -U path PATH
+
+# mise — developer-runtime owner (python, node, deno, uv, direnv, pi)
+# Non-interactive shells get mise shims via the linked ~/.zshenv.
+if command -v mise >/dev/null 2>&1; then
+	eval "$(mise activate zsh)"
+fi
 
 # Set prompt
 #
@@ -21,7 +27,9 @@
 #setopt prompt_subst # To be able to call functions inside of prompts
 #PS1='$(~/.zsh_tools/prompt-rs --error $?)'
 #RPS1='$(~/.zsh_tools/prompt-rs --rprompt)'
-eval "$(starship init zsh)"
+if command -v starship >/dev/null 2>&1; then
+	eval "$(starship init zsh)"
+fi
 
 # ZSH history settings - Never expire history
 HISTFILE="$HOME/.zsh_history"
@@ -104,18 +112,16 @@ alias dc='docker-compose'
 # export XDG_CONFIG_HOME=~/.config
 
 # standard PATH adjustments
-export PATH="$HOME/.local/bin:$PATH"
+path=("$HOME/.local/share/mise/shims" "$HOME/.local/bin" $path)
 
 # fzf - commands history fuzzy finder. Also interactive files searcher
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 # Rust
-source $HOME/.cargo/env
-
-# Node version manager
-# Disabled for now cuz its slow as fuck
-#export NVM_DIR='$([ -z '${XDG_CONFIG_HOME-}' ] && printf %s '${HOME}/.nvm' || printf %s '${XDG_CONFIG_HOME}/nvm')'
-#[ -s '$NVM_DIR/nvm.sh' ] && \. '$NVM_DIR/nvm.sh'
+# rustup: documented exception — not managed by mise
+if [[ -r "$HOME/.cargo/env" ]]; then
+	source "$HOME/.cargo/env"
+fi
 
 # Sign my commits with a GPG key
 #eval $(gpg-agent --daemon)
@@ -143,31 +149,30 @@ alias gcm="git checkout main"
 
 alias cr='git rev-parse --is-inside-work-tree >/dev/null 2>&1 && cd "$(git rev-parse --show-toplevel)"'
 
-export PATH="$HOME/.pyenv/bin:$PATH"
-eval "$(direnv hook zsh)"
+# direnv via mise (mise-managed direnv resolves through the mise shims PATH)
+if command -v direnv >/dev/null 2>&1; then
+	eval "$(direnv hook zsh)"
+fi
 
 export PATH="$PATH:$HOME/.local/bin"
-
-#export NVM_LAZY_LOAD=true
-#source ~/.zsh-nvm/zsh-nvm.plugin.zsh
 
 export GOPATH=$HOME/go
 export PATH=$PATH:$GOPATH/bin
 
-export DOCKER_HOST='unix:///var/folders/pp/5474vyks5c3bnhy2qpkkqfkm0000gr/T/podman/podman-machine-default-api.sock'
+# A per-machine Podman socket, when needed, belongs in ~/.zsh_local.
 alias docker="podman"
-eval "$(fnm env --use-on-cd --shell zsh)"
 
 export LANG="en_US.UTF-8"
 export LC_ALL="en_US.UTF-8"
 
-# Added by Windsurf
-export PATH="/Users/wojciech.bartnik/.codeium/windsurf/bin:$PATH"
-
 # code resolves to VS Code via PATH (/Applications/Visual Studio Code.app/.../bin/code)
 alias buu="brew update && brew upgrade"
 
-export BROWSER="open"
+if [[ $OSTYPE == darwin* ]]; then
+	export BROWSER="open"
+else
+	export BROWSER="xdg-open"
+fi
 
 loop() {
   local count=0
@@ -180,4 +185,7 @@ loop() {
 }
 
 # Local / machine-specific overrides (not tracked)
-[ -f "$HOME/.zsh_local" ] && source "$HOME/.zsh_local"
+path=("$HOME/.local/share/mise/shims" "$HOME/.local/bin" $path)
+if [[ -r "$HOME/.zsh_local" ]]; then
+	source "$HOME/.zsh_local"
+fi

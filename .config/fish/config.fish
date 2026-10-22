@@ -1,7 +1,19 @@
 # ~/.config/fish/config.fish — generic shell config (lean port from .zshrc)
 # Work-specific stuff lives in ~/.fish_local (untracked)
 
-status is-interactive; or exit 0
+status is-interactive; or return
+
+# Resolve installed tools before initializing their interactive integrations.
+for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew /home/linuxbrew/.linuxbrew/bin/brew
+    if test -x $brew_bin
+        $brew_bin shellenv | source
+        break
+    end
+end
+test -f $HOME/.cargo/env.fish; and source $HOME/.cargo/env.fish
+fish_add_path --prepend $HOME/.local/bin
+fish_add_path --prepend $HOME/.local/share/mise/shims
+type -q mise; and mise activate fish | source
 
 # Prompt
 type -q starship; and starship init fish | source
@@ -21,29 +33,39 @@ set -gx LANG en_US.UTF-8
 set -gx LC_ALL en_US.UTF-8
 
 # Misc env
-set -gx BROWSER open
+if test (uname) = Darwin
+    set -gx BROWSER open
+else
+    set -gx BROWSER xdg-open
+end
 set -gx GOPATH $HOME/go
-set -gx DOCKER_HOST 'unix:///var/folders/pp/5474vyks5c3bnhy2qpkkqfkm0000gr/T/podman/podman-machine-default-api.sock'
+# Machine-specific Podman socket settings belong in ~/.fish_local.
 
 # PATH (fish_add_path is idempotent)
 fish_add_path $HOME/.local/bin
 fish_add_path "/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
-fish_add_path $HOME/.pyenv/bin
 fish_add_path $GOPATH/bin
-fish_add_path $HOME/.codeium/windsurf/bin
 
 # Linux Homebrew (no-op on macOS)
 if test -f /home/linuxbrew/.linuxbrew/bin/brew
     /home/linuxbrew/.linuxbrew/bin/brew shellenv | source
 end
 
-# Rust
+# Rust (rustup: documented exception — not managed by mise)
 test -f $HOME/.cargo/env.fish; and source $HOME/.cargo/env.fish
 
 # Integrations
-type -q fzf;    and fzf --fish | source
-type -q direnv; and direnv hook fish | source
-type -q fnm;    and fnm env --use-on-cd --shell fish | source
+if type -q fzf
+    if fzf --fish >/dev/null 2>&1
+        fzf --fish | source
+    else if test -f $HOME/.fzf/shell/key-bindings.fish
+        source $HOME/.fzf/shell/key-bindings.fish
+    end
+end
+type -q direnv; and direnv hook fish | source # direnv via mise (resolves through mise shims)
+
+# Reassert runtime priority after other PATH integrations.
+fish_add_path --prepend --move $HOME/.local/share/mise/shims
 
 # Git aliases
 alias gss 'git status'

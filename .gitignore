@@ -1,0 +1,16 @@
+.DS_Store
+__pycache__/
+*.pyc
+
+# Private credentials and per-machine overrides must never enter Git.
+.zsh_local
+.fish_local
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.pi/**/auth.json
+.pi/**/sessions/
+.codex/
+*.bak
