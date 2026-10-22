@@ -70,16 +70,27 @@ get_prefered_editor() {
 	echo 'vi'
 }
 
-get_update_system_command() {
-	if command -v apt &>/dev/null; then
-		command="sudo apt update && sudo apt upgrade --yes"
-	elif [[ $(uname) == "Darwin" ]]; then
-		command="brew update && brew upgrade"
+update_system() {
+	if [[ $(uname) == "Darwin" ]]; then
+		brew update && brew upgrade
+	elif command -v apt >/dev/null 2>&1; then
+		sudo apt update && sudo apt upgrade --yes
+	elif command -v dnf >/dev/null 2>&1; then
+		sudo dnf upgrade --refresh -y
+	elif command -v yum >/dev/null 2>&1; then
+		sudo yum update -y
+	elif command -v pacman >/dev/null 2>&1; then
+		sudo pacman -Syu --noconfirm
+	elif command -v zypper >/dev/null 2>&1; then
+		sudo zypper refresh && sudo zypper update -y
+	elif command -v apk >/dev/null 2>&1; then
+		sudo apk update && sudo apk upgrade
+	elif command -v brew >/dev/null 2>&1; then
+		brew update && brew upgrade
 	else
-		command='echo "Unknown OS!, Cannot update automatically"'
+		echo "Unknown OS; cannot update automatically" >&2
+		return 1
 	fi
-
-	echo "$command && rustup update && cargo install-update -a"
 }
 
 alias git='LANG=en_US.UTF-8 git'
@@ -93,7 +104,7 @@ alias gco='git checkout'
 alias gcmsg='git commit -S -m'
 alias grbi='git rebase -i'
 alias gcl='git clean -fdx'
-alias sau="$(get_update_system_command)"
+alias sau='update_system && rustup update && cargo install-update -a'
 alias sai='sudo apt install'
 alias htop='htop -d10'
 # Docker aliases
@@ -170,7 +181,7 @@ export LANG="en_US.UTF-8"
 export LC_ALL="en_US.UTF-8"
 
 # code resolves to VS Code via PATH (/Applications/Visual Studio Code.app/.../bin/code)
-alias buu="brew update && brew upgrade"
+alias buu='update_system'
 
 if [[ $OSTYPE == darwin* ]]; then
 	export BROWSER="open"

@@ -93,7 +93,37 @@ alias dps 'docker ps'
 alias dpsa 'docker ps --all'
 alias dc docker-compose
 alias docker podman
-alias buu 'brew update && brew upgrade'
+
+function update_system --description 'update the operating system packages'
+    if test (uname) = Darwin
+        brew update; and brew upgrade
+    else if type -q apt
+        sudo apt update; and sudo apt upgrade --yes
+    else if type -q dnf
+        sudo dnf upgrade --refresh -y
+    else if type -q yum
+        sudo yum update -y
+    else if type -q pacman
+        sudo pacman -Syu --noconfirm
+    else if type -q zypper
+        sudo zypper refresh; and sudo zypper update -y
+    else if type -q apk
+        sudo apk update; and sudo apk upgrade
+    else if type -q brew
+        brew update; and brew upgrade
+    else
+        echo "Unknown OS; cannot update automatically" >&2
+        return 1
+    end
+end
+
+function sau --description 'update OS packages, Rust, and installed cargo tools'
+    update_system; or return
+    rustup update; or return
+    cargo install-update -a
+end
+
+alias buu update_system
 
 function loop --description 'run a command repeatedly while it succeeds'
     set -l count 0
