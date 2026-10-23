@@ -6,14 +6,12 @@
 # By default this installs CLI/server tooling only. Pass --gui to also install
 # GUI extras (Alacritty and the Nerd Font).
 #
-# mise is the developer-runtime owner: python, node, deno, uv, direnv and
-# the pi coding agent are installed and pinned through mise (see the
-# MISE_*_VERSION variables below). rustup is the documented exception.
-# Homebrew stays available for CLI/GUI tools but no longer owns runtimes.
-#
-# Legacy-tool cleanup on EXISTING machines (nvm, fnm, pyenv, standalone uv,
-# uv/npm caches) is NOT done here — see migrate-mise-cleanup.bash in this
-# repo (dry-run by default; pass --apply to actually delete).
+# Developer runtimes come from the operating system:
+#   macOS: Homebrew
+#   Ubuntu: apt
+# Node uses the system LTS unless it is too old for the current tools; in
+# that case fnm installs a newer LTS. Rust tools are installed as prebuilt
+# binaries through cargo-binstall, never compiled locally.
 #
 # Usage:
 #   bash new.bash
@@ -45,16 +43,6 @@ export DEBIAN_FRONTEND=noninteractive
 
 RESTORE=$(echo -en '\033[0m')
 BLUE=$(echo -en '\033[01;34m')
-
-# Tool versions managed by mise — single source of truth; keep in sync with
-# the live ~/.config/mise/config.toml on the reference machine
-MISE_PYTHON_VERSION=3.14.6
-MISE_NODE_VERSION=26.6.0
-MISE_DENO_VERSION=2.9.4
-MISE_UV_VERSION=0.9.26
-MISE_DIRENV_VERSION=2.37.1
-MISE_PI_VERSION=0.83.0
-MISE_CODEX_VERSION=0.163.0 # Ubuntu; macOS uses the Homebrew cask
 
 get_system_type() {
 	if [[ $(uname) == "Darwin" ]]; then
@@ -106,7 +94,8 @@ if [[ $SYSTEM_TYPE == U* ]]; then
 	echo "${BLUE}Installing system packages (apt)${RESTORE}"
 	sudo apt-get install -y \
 		zsh fish tmux cmake neovim build-essential pkg-config openssl libssl-dev \
-		jq fzf curl git git-lfs htop ca-certificates unzip fontconfig
+		jq fzf curl git git-lfs htop ca-certificates unzip fontconfig \
+		python3 python3-venv python3-pip pipx direnv nodejs npm
 
 	if [[ "$GUI_SETUP" == true ]]; then
 		echo "${BLUE}Installing GUI terminal (apt)${RESTORE}"
@@ -117,8 +106,8 @@ fi
 if [[ $SYSTEM_TYPE == "MacOS" ]]; then
 	echo "${BLUE}Installing CLI tools (brew)${RESTORE}"
 	brew install \
-		zsh fish tmux neovim jq fzf starship podman git-lfs \
-		lsd bat ripgrep gitui htop zellij
+		zsh fish tmux neovim jq fzf podman git-lfs htop \
+		python node fnm direnv uv cargo-binstall
 
 	if [[ "$GUI_SETUP" == true ]]; then
 		echo "${BLUE}Installing GUI apps (brew --cask)${RESTORE}"
@@ -154,53 +143,55 @@ if command -v git-lfs >/dev/null 2>&1; then
 	git lfs install
 fi
 
-echo "${BLUE}Installing mise (developer-runtime owner)${RESTORE}"
-if ! command -v mise &>/dev/null; then
-	if [[ $SYSTEM_TYPE == "MacOS" ]]; then
-		brew install mise
-	elif [[ $SYSTEM_TYPE == U* ]]; then
-		# Official installer — same curl|sh pattern as rustup below
-		curl -fsSL https://mise.run | sh
-	fi
-fi
-# Resolve the mise binary (Linux installs to ~/.local/bin) and the tool
-# shims for the remainder of this non-interactive script.
+echo "${BLUE}Configuring Node.js and fnm${RESTORE}"
 export PATH="$HOME/.local/bin:$PATH"
-export PATH="$HOME/.local/share/mise/shims:$PATH"
-
-echo "${BLUE}Pinning developer runtimes via mise${RESTORE}"
-mise use -g \
-	"python@$MISE_PYTHON_VERSION" \
-	"node@$MISE_NODE_VERSION" \
-	"deno@$MISE_DENO_VERSION" \
-	"uv@$MISE_UV_VERSION" \
-	"direnv@$MISE_DIRENV_VERSION"
-mise use -g "npm:@earendil-works/pi-coding-agent@$MISE_PI_VERSION"
-mise install
-
 if [[ $SYSTEM_TYPE == U* ]]; then
-	echo "${BLUE}Installing Codex CLI through mise${RESTORE}"
-	mise use -g "npm:@openai/codex@$MISE_CODEX_VERSION"
-	mise install
+	if ! command -v fnm >/dev/null 2>&1; then
+		# Prebuilt binary; --skip-shell because this repo owns shell config.
+		curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell
+	fi
+	export PATH="$HOME/.local/share/fnm:$HOME/.local/bin:$PATH"
+fi
+
+if ! command -v fnm >/dev/null 2>&1; then
+	echo "fnm is not installed" >&2
+	exit 1
+fi
+
+eval "$(fnm env --shell bash)"
+if ! command -v node >/dev/null 2>&1 || ! node -e '
+	const [major, minor] = process.versions.node.split(".").map(Number);
+	process.exit(major > 22 || (major === 22 && minor >= 19) ? 0 : 1);
+'; then
+	echo "${BLUE}System Node is too old; installing Node 22 LTS with fnm${RESTORE}"
+	fnm install 22
+	fnm default 22
+	fnm use 22
+fi
+
+echo "${BLUE}Installing npm tools${RESTORE}"
+npm config set prefix "$HOME/.local"
+npm install -g @earendil-works/pi-coding-agent
+if [[ $SYSTEM_TYPE == U* ]]; then
+	npm install -g @openai/codex
+fi
+
+if [[ $SYSTEM_TYPE == U* ]] && ! command -v uv >/dev/null 2>&1; then
+	echo "${BLUE}Installing uv through pipx${RESTORE}"
+	pipx install uv
 fi
 
 echo "${BLUE}Installing Rust toolchain${RESTORE}"
-# rustup: documented exception — not managed by mise
 if ! command -v cargo &>/dev/null; then
 	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 fi
 # shellcheck source=/dev/null
 source "$HOME/.cargo/env"
 
-echo "${BLUE}Installing useful Rust command-line tools${RESTORE}"
-cargo install cargo-quickinstall
-cargo quickinstall cargo-update
-if [[ $SYSTEM_TYPE == U* ]]; then
-	# macOS gets these via brew above
-	cargo quickinstall starship
-	cargo quickinstall ripgrep
-	cargo quickinstall lsd
-	cargo quickinstall bat
+if [[ $SYSTEM_TYPE == U* ]] && ! command -v cargo-binstall >/dev/null 2>&1; then
+	echo "${BLUE}Installing cargo-binstall (prebuilt)${RESTORE}"
+	curl -L --proto '=https' --tlsv1.2 -sSf \
+		https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
 fi
 
 echo "${BLUE}Setting up dotfiles${RESTORE}"
@@ -238,6 +229,11 @@ if [[ -f "$HOME/dotfiles/bin/cargo-binstall-latest" ]]; then
 	install -m 755 "$HOME/dotfiles/bin/cargo-binstall-latest" "$HOME/.local/bin/cargo-binstall-latest"
 fi
 
+echo "${BLUE}Installing Rust CLI tools (prebuilt only)${RESTORE}"
+for crate in starship ripgrep lsd bat gitui zellij; do
+	"$HOME/.local/bin/cargo-binstall-latest" "$crate"
+done
+
 # Other top-level config files
 cp "$HOME/dotfiles/.tmux.conf" "$HOME/.tmux.conf"
 cp "$HOME/dotfiles/.vimrc" "$HOME/.vimrc"
@@ -254,8 +250,8 @@ fi
 cp "$HOME/dotfiles/.pi/agent/npm/package.json" "$HOME/.pi/agent/npm/package.json"
 cp "$HOME/dotfiles/.pi/agent/extensions/eko24ive-pi-ask.json" "$HOME/.pi/agent/extensions/eko24ive-pi-ask.json"
 cp "$HOME/dotfiles/.pi/agent/extensions/pi-rtk-optimizer/config.json" "$HOME/.pi/agent/extensions/pi-rtk-optimizer/config.json"
-# Install pi extension dependencies silently (npm resolves to the
-# mise-managed node/npm via the shims PATH exported above)
+# Install pi extension dependencies silently (npm resolves through the
+# system Node, or fnm when the system Node was too old)
 (cd "$HOME/.pi/agent" && npm install --ignore-scripts &>/dev/null) || true
 
 # XDG configs

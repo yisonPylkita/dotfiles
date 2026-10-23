@@ -1,4 +1,18 @@
-# macOS /etc/zprofile runs path_helper after .zshenv; restore mise priority.
+# macOS /etc/zprofile runs path_helper after .zshenv; restore local tool priority.
 typeset -U path PATH
-path=("$HOME/.local/share/mise/shims" "$HOME/.local/bin" $path)
+local_paths=("$HOME/.cargo/bin" "$HOME/.local/bin")
+[[ -d "$HOME/.local/share/fnm" ]] && local_paths+=("$HOME/.local/share/fnm")
+brew_prefix=""
+for brew_bin in /opt/homebrew/bin /usr/local/bin /home/linuxbrew/.linuxbrew/bin; do
+  if [[ -x "$brew_bin/brew" ]]; then
+    brew_prefix="$brew_bin"
+    break
+  fi
+done
+if [[ -n "$brew_prefix" ]]; then
+  path=("${local_paths[@]}" "$brew_prefix" $path)
+else
+  path=("${local_paths[@]}" $path)
+fi
+unset brew_bin brew_prefix local_paths
 export PATH

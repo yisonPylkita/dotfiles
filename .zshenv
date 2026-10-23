@@ -1,7 +1,7 @@
 # Shared setup for every Zsh session, including noninteractive commands.
 typeset -U path PATH
 
-# rustup remains separate from mise; guard partially initialized machines.
+# rustup lives outside the system package manager.
 if [[ -r "$HOME/.cargo/env" ]]; then
   source "$HOME/.cargo/env"
 fi
@@ -15,6 +15,10 @@ for brew_bin in /opt/homebrew/bin /usr/local/bin /home/linuxbrew/.linuxbrew/bin;
 done
 unset brew_bin
 
-# Keep managed runtimes ahead of legacy standalone tools in ~/.local/bin.
-path=("$HOME/.local/share/mise/shims" "$HOME/.local/bin" $path)
+# Prefer cargo-installed Rust tools over Homebrew duplicates.
+path=("$HOME/.cargo/bin" $path)
+
+# Keep user-local tools ahead of system tools.
+[[ -d "$HOME/.local/share/fnm" ]] && path=("$HOME/.local/share/fnm" $path)
+path=("$HOME/.local/bin" $path)
 export PATH

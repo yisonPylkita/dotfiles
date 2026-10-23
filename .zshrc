@@ -5,10 +5,9 @@
 [[ -o interactive ]] || return
 typeset -U path PATH
 
-# mise — developer-runtime owner (python, node, deno, uv, direnv, pi)
-# Non-interactive shells get mise shims via the linked ~/.zshenv.
-if command -v mise >/dev/null 2>&1; then
-	eval "$(mise activate zsh)"
+# Node version manager; the system Node remains the default.
+if command -v fnm >/dev/null 2>&1; then
+	eval "$(fnm env --use-on-cd --shell zsh)"
 fi
 
 # Set prompt
@@ -70,6 +69,13 @@ get_prefered_editor() {
 	echo 'vi'
 }
 
+update_rust_tools() {
+	local crate
+	for crate in starship ripgrep lsd bat gitui zellij; do
+		cargo-binstall-latest --force "$crate" || return
+	done
+}
+
 update_system() {
 	if [[ $(uname) == "Darwin" ]]; then
 		brew update && brew upgrade
@@ -104,7 +110,7 @@ alias gco='git checkout'
 alias gcmsg='git commit -S -m'
 alias grbi='git rebase -i'
 alias gcl='git clean -fdx'
-alias sau='update_system && rustup update && cargo install-update -a'
+alias sau='update_system && rustup update && update_rust_tools'
 alias sai='sudo apt install'
 alias htop='htop -d10'
 # Docker aliases
@@ -123,7 +129,7 @@ alias dc='docker-compose'
 # export XDG_CONFIG_HOME=~/.config
 
 # standard PATH adjustments
-path=("$HOME/.local/share/mise/shims" "$HOME/.local/bin" $path)
+path=("$HOME/.cargo/bin" "$HOME/.local/bin" $path)
 
 # fzf - commands history fuzzy finder. Also interactive files searcher
 # Prefer the cloned fzf (with shell integration) over an older system package.
@@ -133,7 +139,6 @@ fi
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 # Rust
-# rustup: documented exception — not managed by mise
 if [[ -r "$HOME/.cargo/env" ]]; then
 	source "$HOME/.cargo/env"
 fi
@@ -164,7 +169,7 @@ alias gcm="git checkout main"
 
 alias cr='git rev-parse --is-inside-work-tree >/dev/null 2>&1 && cd "$(git rev-parse --show-toplevel)"'
 
-# direnv via mise (mise-managed direnv resolves through the mise shims PATH)
+# direnv
 if command -v direnv >/dev/null 2>&1; then
 	eval "$(direnv hook zsh)"
 fi
@@ -200,7 +205,7 @@ loop() {
 }
 
 # Local / machine-specific overrides (not tracked)
-path=("$HOME/.local/share/mise/shims" "$HOME/.local/bin" $path)
+path=("$HOME/.cargo/bin" "$HOME/.local/bin" $path)
 if [[ -r "$HOME/.zsh_local" ]]; then
 	source "$HOME/.zsh_local"
 fi

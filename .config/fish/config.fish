@@ -12,8 +12,8 @@ for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew /home/linuxbrew/.linu
 end
 test -f $HOME/.cargo/env.fish; and source $HOME/.cargo/env.fish
 fish_add_path --prepend $HOME/.local/bin
-fish_add_path --prepend $HOME/.local/share/mise/shims
-type -q mise; and mise activate fish | source
+test -d $HOME/.local/share/fnm; and fish_add_path --prepend $HOME/.local/share/fnm
+type -q fnm; and fnm env --use-on-cd --shell fish | source
 
 # Prompt
 type -q starship; and starship init fish | source
@@ -51,7 +51,7 @@ if test -f /home/linuxbrew/.linuxbrew/bin/brew
     /home/linuxbrew/.linuxbrew/bin/brew shellenv | source
 end
 
-# Rust (rustup: documented exception — not managed by mise)
+# Rust (rustup lives outside the system package manager)
 test -f $HOME/.cargo/env.fish; and source $HOME/.cargo/env.fish
 
 # Integrations
@@ -66,10 +66,10 @@ if type -q fzf
         source $HOME/.fzf/shell/key-bindings.fish
     end
 end
-type -q direnv; and direnv hook fish | source # direnv via mise (resolves through mise shims)
+type -q direnv; and direnv hook fish | source
 
-# Reassert runtime priority after other PATH integrations.
-fish_add_path --prepend --move $HOME/.local/share/mise/shims
+# Reassert local tool priority after other PATH integrations.
+fish_add_path --prepend --move $HOME/.local/bin
 
 # Git aliases
 alias gss 'git status'
@@ -117,10 +117,16 @@ function update_system --description 'update the operating system packages'
     end
 end
 
-function sau --description 'update OS packages, Rust, and installed cargo tools'
+function update_rust_tools --description 'update Rust CLIs from prebuilt binaries'
+    for crate in starship ripgrep lsd bat gitui zellij
+        cargo-binstall-latest --force $crate; or return
+    end
+end
+
+function sau --description 'update OS packages, Rust, and prebuilt Rust CLIs'
     update_system; or return
     rustup update; or return
-    cargo install-update -a
+    update_rust_tools
 end
 
 alias buu update_system
