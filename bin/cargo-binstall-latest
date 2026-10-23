@@ -1,0 +1,224 @@
+#!/usr/bin/env python3
+"""Install the newest version of a crate that has a prebuilt binary.
+
+Discovery uses only crates.io metadata, QuickInstall HEAD requests, and GitHub
+release metadata. The selected artifact is downloaded only after the version
+has been chosen, by cargo-binstall.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import platform
+import re
+import shutil
+import subprocess
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+
+USER_AGENT = "dotfiles-cargo-binstall-latest/1"
+CRATES_VERSIONS = "https://crates.io/api/v1/crates/{crate}/versions"
+QUICKINSTALL = (
+    "https://github.com/cargo-bins/cargo-quickinstall/releases/download/"
+    "{crate}-{version}/{crate}-{version}-{target}.tar.gz"
+)
+ARCHIVE_SUFFIXES = (".tar.gz", ".tgz", ".tar.xz", ".tar.zst", ".zip")
+
+
+def _headers(token: str | None = None) -> dict[str, str]:
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+
+def _open(url: str, method: str = "GET", token: str | None = None):
+    request = urllib.request.Request(url, method=method, headers=_headers(token))
+    return urllib.request.urlopen(request, timeout=20)
+
+
+def _json(url: str, token: str | None = None):
+    with _open(url, token=token) as response:
+        return json.load(response)
+
+
+def _head_ok(url: str) -> bool:
+    try:
+        with _open(url, method="HEAD") as response:
+            return response.status in (200, 301, 302)
+    except urllib.error.HTTPError as error:
+        return error.code in (200, 301, 302)
+    except (OSError, urllib.error.URLError):
+        return False
+
+
+def github_token() -> str | None:
+    for name in ("GH_TOKEN", "GITHUB_TOKEN"):
+        value = os.environ.get(name)
+        if value:
+            return value
+    if shutil.which("gh"):
+        result = subprocess.run(
+            ["gh", "auth", "token"], capture_output=True, text=True, check=False
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip()
+    return None
+
+
+def github_repo(version: dict) -> str | None:
+    for field in ("repository", "homepage"):
+        match = re.match(
+            r"https?://github\.com/([^/]+)/([^/#]+)", version.get(field) or ""
+        )
+        if match:
+            return f"{match.group(1)}/{match.group(2).removesuffix('.git')}"
+    return None
+
+
+def stable_versions(crate: str) -> list[dict]:
+    data = _json(CRATES_VERSIONS.format(crate=urllib.parse.quote(crate)))
+    versions = data.get("versions", [])
+    return [
+        version
+        for version in versions
+        if not version.get("yanked") and "-" not in version.get("num", "")
+    ]
+
+
+def target_candidates() -> list[str]:
+    system = platform.system().lower()
+    machine = platform.machine().lower()
+    arch = {
+        "arm64": "aarch64",
+        "aarch64": "aarch64",
+        "x86_64": "x86_64",
+        "amd64": "x86_64",
+    }.get(machine, machine)
+    if system == "darwin":
+        return [f"{arch}-apple-darwin"]
+    if system == "linux":
+        return [
+            f"{arch}-unknown-linux-gnu",
+            f"{arch}-unknown-linux-musl",
+        ]
+    return [f"{arch}-unknown-linux-gnu"]
+
+
+def release_assets(repo: str, token: str | None) -> dict[str, list[str]]:
+    """Map release version -> asset names from one GitHub releases request."""
+    try:
+        releases = _json(
+            f"https://api.github.com/repos/{repo}/releases?per_page=100", token
+        )
+    except (urllib.error.HTTPError, urllib.error.URLError, OSError) as error:
+        print(f"warning: could not read GitHub releases for {repo}: {error}", file=sys.stderr)
+        return {}
+
+    assets: dict[str, list[str]] = {}
+    for release in releases:
+        if release.get("draft") or release.get("prerelease"):
+            continue
+        tag = release.get("tag_name", "")
+        match = re.search(r"(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)$", tag)
+        if not match:
+            continue
+        assets.setdefault(match.group(1), []).extend(
+            asset.get("name", "") for asset in release.get("assets", [])
+        )
+    return assets
+
+
+def asset_matches(name: str, target: str) -> bool:
+    name = name.lower()
+    if not name.endswith(ARCHIVE_SUFFIXES):
+        return False
+    aliases = {target.lower()}
+    if "aarch64" in target:
+        aliases.add(target.lower().replace("aarch64", "arm64"))
+    if "x86_64" in target:
+        aliases.add(target.lower().replace("x86_64", "amd64"))
+    return any(alias in name for alias in aliases)
+
+
+def discover(crate: str, targets: list[str], max_versions: int) -> tuple[str, str, str] | None:
+    versions = stable_versions(crate)
+    token = github_token()
+    repo = github_repo(versions[0]) if versions else None
+    assets = release_assets(repo, token) if repo else {}
+
+    for version in versions[:max_versions]:
+        number = version.get("num", "")
+        for target in targets:
+            quickinstall_url = QUICKINSTALL.format(
+                crate=crate, version=number, target=target
+            )
+            if _head_ok(quickinstall_url):
+                return number, target, "quickinstall"
+
+            if any(asset_matches(name, target) for name in assets.get(number, [])):
+                return number, target, "github"
+
+    return None
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Install the newest crate version with a prebuilt binary."
+    )
+    parser.add_argument("crate")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="show the selected version/target/source and do not install",
+    )
+    parser.add_argument("--force", action="store_true", help="pass --force to cargo-binstall")
+    parser.add_argument("--max-versions", type=int, default=20)
+    parser.add_argument(
+        "--target",
+        action="append",
+        dest="targets",
+        help="override target triple (repeatable)",
+    )
+    args = parser.parse_args()
+
+    targets = args.targets or target_candidates()
+    found = discover(args.crate, targets, args.max_versions)
+    if found is None:
+        print(
+            f"cargo-binstall-latest: no prebuilt binary found for {args.crate} "
+            f"within {args.max_versions} stable versions (targets: {', '.join(targets)})",
+            file=sys.stderr,
+        )
+        return 1
+
+    version, target, source = found
+    print(f"{args.crate}\t{version}\t{target}\t{source}")
+    if args.check:
+        return 0
+
+    command = [
+        "cargo",
+        "binstall",
+        "--no-confirm",
+        "--disable-strategies",
+        "compile",
+        "--targets",
+        target,
+    ]
+    if args.force:
+        command.append("--force")
+    command.append(f"{args.crate}@={version}")
+    return subprocess.run(command, check=False).returncode
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

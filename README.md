@@ -8,4 +8,6 @@ bash <(curl -fsSL https://yisonpylkita.github.io/new.bash)
 
 Append `--gui` to also install Alacritty and the Nerd Font. Supports Ubuntu 22.04/24.04/26.04 LTS and macOS.
 
+The setup installs `cargo-binstall-latest`, which finds the newest crate version that has a prebuilt binary for the current platform before invoking `cargo-binstall`.
+
 Machine-specific settings and secrets belong in `~/.zsh_local` (ignored by Git); start from `.zsh_local.example`. Codex's DeepSeek worker setup lives outside this repo in `~/.codex`.

@@ -232,6 +232,12 @@ if [[ ! -e "$HOME/.zsh_local" && -f "$HOME/dotfiles/.zsh_local.example" ]]; then
 	install -m 600 "$HOME/dotfiles/.zsh_local.example" "$HOME/.zsh_local"
 fi
 
+# Install tracked helper commands.
+if [[ -f "$HOME/dotfiles/bin/cargo-binstall-latest" ]]; then
+	mkdir -p "$HOME/.local/bin"
+	install -m 755 "$HOME/dotfiles/bin/cargo-binstall-latest" "$HOME/.local/bin/cargo-binstall-latest"
+fi
+
 # Other top-level config files
 cp "$HOME/dotfiles/.tmux.conf" "$HOME/.tmux.conf"
 cp "$HOME/dotfiles/.vimrc" "$HOME/.vimrc"
