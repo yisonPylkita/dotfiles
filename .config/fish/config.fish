@@ -129,8 +129,6 @@ function sau --description 'update OS packages, Rust, and prebuilt Rust CLIs'
     update_rust_tools
 end
 
-alias buu update_system
-
 function loop --description 'run a command repeatedly while it succeeds'
     set -l count 0
     while eval $argv

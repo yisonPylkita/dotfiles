@@ -186,8 +186,6 @@ export LANG="en_US.UTF-8"
 export LC_ALL="en_US.UTF-8"
 
 # code resolves to VS Code via PATH (/Applications/Visual Studio Code.app/.../bin/code)
-alias buu='update_system'
-
 if [[ $OSTYPE == darwin* ]]; then
 	export BROWSER="open"
 else
