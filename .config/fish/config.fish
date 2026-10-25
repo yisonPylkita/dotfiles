@@ -117,12 +117,11 @@ function update_system --description 'update the operating system packages'
     end
 end
 
-function update_rust --description 'update stable Rust and remove old toolchains'
-    rustup update stable; or return
-    # Keep only stable; drop old pinned and nightly toolchains.
-    for toolchain in (rustup toolchain list | awk '$1 !~ /^stable-/ { print $1 }')
-        rustup toolchain uninstall $toolchain; or return
-    end
+function update_rust --description 'update stable Rust and report toolchain disk usage'
+    rustup update stable
+    set -l update_status $status
+    type -q rustup-report; and rustup-report
+    return $update_status
 end
 
 function update_rust_tools --description 'update Rust CLIs from prebuilt binaries'

@@ -181,16 +181,12 @@ if [[ $SYSTEM_TYPE == U* ]] && ! command -v uv >/dev/null 2>&1; then
 	pipx install uv
 fi
 
-echo "${BLUE}Installing Rust toolchain (stable only)${RESTORE}"
+echo "${BLUE}Installing Rust toolchain${RESTORE}"
 if ! command -v cargo &>/dev/null; then
 	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
 fi
-# Keep only the latest stable toolchain; remove old pinned and nightly ones.
+# Stable is the default; other installed toolchains are kept and reported.
 rustup default stable
-for toolchain in $(rustup toolchain list 2>/dev/null | awk '$1 !~ /^stable-/ { print $1 }'); do
-	echo "${BLUE}Removing Rust toolchain $toolchain${RESTORE}"
-	rustup toolchain uninstall "$toolchain"
-done
 # shellcheck source=/dev/null
 source "$HOME/.cargo/env"
 
@@ -234,11 +230,18 @@ if [[ -f "$HOME/dotfiles/bin/cargo-binstall-latest" ]]; then
 	mkdir -p "$HOME/.local/bin"
 	install -m 755 "$HOME/dotfiles/bin/cargo-binstall-latest" "$HOME/.local/bin/cargo-binstall-latest"
 fi
+if [[ -f "$HOME/dotfiles/bin/rustup-report" ]]; then
+	mkdir -p "$HOME/.local/bin"
+	install -m 755 "$HOME/dotfiles/bin/rustup-report" "$HOME/.local/bin/rustup-report"
+fi
 
 echo "${BLUE}Installing Rust CLI tools (prebuilt only)${RESTORE}"
 for crate in starship ripgrep lsd bat gitui zellij; do
 	"$HOME/.local/bin/cargo-binstall-latest" "$crate"
 done
+
+echo "${BLUE}Rust toolchain disk usage${RESTORE}"
+"$HOME/.local/bin/rustup-report"
 
 # Other top-level config files
 cp "$HOME/dotfiles/.tmux.conf" "$HOME/.tmux.conf"

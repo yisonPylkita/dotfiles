@@ -70,12 +70,10 @@ get_prefered_editor() {
 }
 
 update_rust() {
-	rustup update stable || return
-	# Keep only stable; drop old pinned and nightly toolchains.
-	local toolchain
-	for toolchain in $(rustup toolchain list | awk '$1 !~ /^stable-/ { print $1 }'); do
-		rustup toolchain uninstall "$toolchain" || return
-	done
+	rustup update stable
+	local update_status=$?
+	command -v rustup-report >/dev/null 2>&1 && rustup-report
+	return $update_status
 }
 
 update_rust_tools() {
