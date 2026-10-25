@@ -117,15 +117,23 @@ function update_system --description 'update the operating system packages'
     end
 end
 
+function update_rust --description 'update stable Rust and remove old toolchains'
+    rustup update stable; or return
+    # Keep only stable; drop old pinned and nightly toolchains.
+    for toolchain in (rustup toolchain list | awk '$1 !~ /^stable-/ { print $1 }')
+        rustup toolchain uninstall $toolchain; or return
+    end
+end
+
 function update_rust_tools --description 'update Rust CLIs from prebuilt binaries'
     for crate in starship ripgrep lsd bat gitui zellij
         cargo-binstall-latest --force $crate; or return
     end
 end
 
-function sau --description 'update OS packages, Rust, and prebuilt Rust CLIs'
+function sau --description 'update OS packages, stable Rust, and prebuilt Rust CLIs'
     update_system; or return
-    rustup update; or return
+    update_rust; or return
     update_rust_tools
 end
 

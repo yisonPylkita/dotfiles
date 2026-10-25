@@ -181,10 +181,16 @@ if [[ $SYSTEM_TYPE == U* ]] && ! command -v uv >/dev/null 2>&1; then
 	pipx install uv
 fi
 
-echo "${BLUE}Installing Rust toolchain${RESTORE}"
+echo "${BLUE}Installing Rust toolchain (stable only)${RESTORE}"
 if ! command -v cargo &>/dev/null; then
-	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
 fi
+# Keep only the latest stable toolchain; remove old pinned and nightly ones.
+rustup default stable
+for toolchain in $(rustup toolchain list 2>/dev/null | awk '$1 !~ /^stable-/ { print $1 }'); do
+	echo "${BLUE}Removing Rust toolchain $toolchain${RESTORE}"
+	rustup toolchain uninstall "$toolchain"
+done
 # shellcheck source=/dev/null
 source "$HOME/.cargo/env"
 

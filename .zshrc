@@ -69,6 +69,15 @@ get_prefered_editor() {
 	echo 'vi'
 }
 
+update_rust() {
+	rustup update stable || return
+	# Keep only stable; drop old pinned and nightly toolchains.
+	local toolchain
+	for toolchain in $(rustup toolchain list | awk '$1 !~ /^stable-/ { print $1 }'); do
+		rustup toolchain uninstall "$toolchain" || return
+	done
+}
+
 update_rust_tools() {
 	local crate
 	for crate in starship ripgrep lsd bat gitui zellij; do
@@ -110,7 +119,11 @@ alias gco='git checkout'
 alias gcmsg='git commit -S -m'
 alias grbi='git rebase -i'
 alias gcl='git clean -fdx'
-alias sau='update_system && rustup update && update_rust_tools'
+sau() {
+	update_system || return
+	update_rust || return
+	update_rust_tools
+}
 alias sai='sudo apt install'
 alias htop='htop -d10'
 # Docker aliases
