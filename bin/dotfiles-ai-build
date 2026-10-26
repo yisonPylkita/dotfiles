@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" -ne 0 ]; then
+	printf 'Usage: %s\n' "$0" >&2
+	exit 2
+fi
+
+: "${HOME:?HOME must be set}"
+
+resolve_script_dir() {
+	local source="${BASH_SOURCE[0]}"
+	local directory
+	while [ -L "$source" ]; do
+		directory="$(cd -P "$(dirname "$source")" && pwd)"
+		source="$(readlink "$source")"
+		case "$source" in
+			/*) ;;
+			*) source="$directory/$source" ;;
+		esac
+	done
+	cd -P "$(dirname "$source")" && pwd
+}
+
+dotfiles_dir="${DOTFILES_DIR:-$(cd -P "$(resolve_script_dir)/.." && pwd)}"
+config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+generic_file="$dotfiles_dir/ai/AGENTS.md"
+output_dir="$config_home/ai"
+local_file="$output_dir/AGENTS.local.md"
+output_file="$output_dir/AGENTS.md"
+
+if [ ! -f "$generic_file" ]; then
+	printf 'Error: generic AI instructions are missing: %s\n' "$generic_file" >&2
+	exit 1
+fi
+
+mkdir -p "$output_dir"
+temp_file="$(mktemp "$output_dir/.AGENTS.md.XXXXXX")"
+trap 'rm -f "$temp_file"' EXIT
+
+cat "$generic_file" > "$temp_file"
+if [ -s "$local_file" ]; then
+	printf '\n' >> "$temp_file"
+	cat "$local_file" >> "$temp_file"
+fi
+chmod 0444 "$temp_file"
+mv -f "$temp_file" "$output_file"
+trap - EXIT

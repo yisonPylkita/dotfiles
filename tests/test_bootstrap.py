@@ -86,6 +86,8 @@ class BootstrapTests(unittest.TestCase):
             ".pi/agent/extensions/eko24ive-pi-ask.json",
             ".pi/agent/extensions/pi-rtk-optimizer/config.json",
             "bin/dotfiles-rust-update",
+            "bin/dotfiles-ai-build",
+            "ai/AGENTS.md",
         ]
         for relative in files:
             source = ROOT / relative

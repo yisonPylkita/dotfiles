@@ -61,9 +61,14 @@ class SetupConfigTests(unittest.TestCase):
         rust_update = ROOT / "bin/dotfiles-rust-update"
         if rust_update.exists():
             links[self.home / ".local/bin/dotfiles-rust-update"] = rust_update
+        links[self.home / ".local/bin/dotfiles-ai-build"] = ROOT / "bin/dotfiles-ai-build"
+        generated = self.home.resolve() / ".config/ai/AGENTS.md"
+        links[self.home / ".claude/CLAUDE.md"] = generated
+        links[self.home / ".codex/AGENTS.md"] = generated
         for destination, source in links.items():
             self.assertTrue(destination.is_symlink())
             self.assertEqual(os.readlink(destination), str(source))
+        self.assertEqual(generated.read_bytes(), (ROOT / "ai/AGENTS.md").read_bytes())
         self.assertNotIn("Backups stored under", first.stdout)
         self.assertFalse((self.home / ".config/alacritty/alacritty.toml").exists())
 
@@ -245,6 +250,28 @@ class SetupConfigTests(unittest.TestCase):
         manifest = (backups[0] / "manifest.tsv").read_text()
         self.assertIn(f"{original}\t{preserved}\t640\n", manifest)
 
+    def test_ai_instruction_links_replace_existing_files_with_backup(self):
+        claude = self.home / ".claude/CLAUDE.md"
+        claude.parent.mkdir()
+        claude.write_bytes(b"old claude\n")
+        local = self.home / ".config/ai/AGENTS.local.md"
+        local.parent.mkdir(parents=True)
+        local.write_bytes(b"local rules\n")
+
+        result = self.run_helper("--zsh-only")
+        self.assertIn("Backups stored under", result.stdout)
+        generated = self.home / ".config/ai/AGENTS.md"
+        self.assertEqual(
+            generated.read_bytes(),
+            (ROOT / "ai/AGENTS.md").read_bytes() + b"\nlocal rules\n",
+        )
+        self.assertTrue(claude.is_symlink())
+        self.assertEqual(os.readlink(claude), str(generated.resolve()))
+        self.assertTrue((self.home / ".codex/AGENTS.md").is_symlink())
+        backup_dir = Path(result.stdout.split("Backups stored under ", 1)[1].strip())
+        preserved = backup_dir / "originals" / str(self.home.resolve() / ".claude/CLAUDE.md").lstrip("/")
+        self.assertEqual(preserved.read_bytes(), b"old claude\n")
+
     def test_gui_helper_links_without_cloning_themes(self):
         config_home = self.home / "config with spaces"
         self.run_helper("--gui", env={"XDG_CONFIG_HOME": str(config_home)})
@@ -265,7 +292,7 @@ class SetupConfigTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         for name in [".zshrc", ".zshenv", ".zprofile"]:
             self.assertTrue((self.home / name).is_symlink())
-        for name in ["cargo-binstall-latest", "dotfiles-rust-update"]:
+        for name in ["cargo-binstall-latest", "dotfiles-rust-update", "dotfiles-ai-build"]:
             self.assertTrue((self.home / ".local/bin" / name).is_symlink())
         self.assertFalse((self.home / ".config/fish/config.fish").exists())
         self.assertFalse((self.home / ".pi/agent/settings.json").exists())

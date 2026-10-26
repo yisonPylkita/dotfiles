@@ -27,4 +27,6 @@ Keep shared preferences in the tracked configuration. Put laptop-specific comman
 
 Existing local files are never overwritten. Do not put secrets into the tracked configuration. `.zsh_local.example` shows the intended separation.
 
+AI agent instructions follow the same split. The tracked `ai/AGENTS.md` holds the generic rules, and an optional, untracked `~/.config/ai/AGENTS.local.md` (or `$XDG_CONFIG_HOME/ai/AGENTS.local.md`) holds laptop-specific ones. `dotfiles-ai-build` concatenates them into a read-only `~/.config/ai/AGENTS.md`, which `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md` link to. Setup runs it on every run; rerun it after editing either source file.
+
 `sau` updates OS packages, Rust, and the shared Rust CLI tools. Its Rust steps use `~/.cargo` and `~/.rustup` from the home directory, so project Cargo settings cannot redirect system-wide updates. `cargo-binstall-latest` selects the newest release with a prebuilt binary instead of compiling these tools locally.

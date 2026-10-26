@@ -85,6 +85,7 @@ add_link "$repo_dir/.zshenv" "$zsh_dir/.zshenv"
 add_link "$repo_dir/.zprofile" "$zsh_dir/.zprofile"
 add_link "$repo_dir/bin/cargo-binstall-latest" "$home_dir/.local/bin/cargo-binstall-latest"
 add_link "$repo_dir/bin/dotfiles-rust-update" "$home_dir/.local/bin/dotfiles-rust-update"
+add_link "$repo_dir/bin/dotfiles-ai-build" "$home_dir/.local/bin/dotfiles-ai-build"
 
 if [[ "$zsh_only" != true ]]; then
 	add_link "$repo_dir/.config/fish/config.fish" "$config_home/fish/config.fish"
@@ -149,6 +150,17 @@ canonicalize_target() {
 		NORMALIZED_TARGET="$resolved_parent/$name"
 	fi
 }
+
+ai_generated_file="$config_home/ai/AGENTS.md"
+canonicalize_target "$ai_generated_file"
+ai_generated_file="$NORMALIZED_TARGET"
+if [[ ! -f "$repo_dir/ai/AGENTS.md" || ! -x "$repo_dir/bin/dotfiles-ai-build" ]]; then
+	printf 'Error: AI instruction sources are missing from %s\n' "$repo_dir" >&2
+	exit 1
+fi
+XDG_CONFIG_HOME="$config_home" DOTFILES_DIR="$repo_dir" "$repo_dir/bin/dotfiles-ai-build"
+add_link "$ai_generated_file" "$home_dir/.claude/CLAUDE.md"
+add_link "$ai_generated_file" "$home_dir/.codex/AGENTS.md"
 
 canonical_link_targets=()
 canonical_seed_targets=()
