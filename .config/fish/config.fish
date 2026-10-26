@@ -1,30 +1,38 @@
 # ~/.config/fish/config.fish — generic shell config (lean port from .zshrc)
 # Work-specific stuff lives in ~/.fish_local (untracked)
 
+fish_add_path --path --prepend $HOME/.cargo/bin
 status is-interactive; or return
 
 # Resolve installed tools before initializing their interactive integrations.
-for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew /home/linuxbrew/.linuxbrew/bin/brew
+for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew
     if test -x $brew_bin
         $brew_bin shellenv | source
         break
     end
 end
+# Linux Homebrew (no-op on macOS)
+if test -f /home/linuxbrew/.linuxbrew/bin/brew
+    /home/linuxbrew/.linuxbrew/bin/brew shellenv | source
+end
+# Rust (rustup lives outside the system package manager)
 test -f $HOME/.cargo/env.fish; and source $HOME/.cargo/env.fish
-fish_add_path --prepend $HOME/.local/bin
-test -d $HOME/.local/share/fnm; and fish_add_path --prepend $HOME/.local/share/fnm
+fish_add_path --path --prepend $HOME/.local/bin
+test -d $HOME/.local/share/fnm; and fish_add_path --path --prepend $HOME/.local/share/fnm
 type -q fnm; and fnm env --use-on-cd --shell fish | source
 
 # Prompt
 type -q starship; and starship init fish | source
 
 # Editor
-if type -q nvim
-    set -gx EDITOR nvim
-else if type -q vim
-    set -gx EDITOR vim
-else
-    set -gx EDITOR vi
+if not set -q EDITOR
+    if type -q nvim
+        set -gx EDITOR nvim
+    else if type -q vim
+        set -gx EDITOR vim
+    else
+        set -gx EDITOR vi
+    end
 end
 alias vi=$EDITOR
 
@@ -42,22 +50,14 @@ set -gx GOPATH $HOME/go
 # Machine-specific Podman socket settings belong in ~/.fish_local.
 
 # PATH (fish_add_path is idempotent)
-fish_add_path $HOME/.local/bin
-fish_add_path "/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
-fish_add_path $GOPATH/bin
-
-# Linux Homebrew (no-op on macOS)
-if test -f /home/linuxbrew/.linuxbrew/bin/brew
-    /home/linuxbrew/.linuxbrew/bin/brew shellenv | source
-end
-
-# Rust (rustup lives outside the system package manager)
-test -f $HOME/.cargo/env.fish; and source $HOME/.cargo/env.fish
+fish_add_path --path $HOME/.local/bin
+test -d "/Applications/Visual Studio Code.app/Contents/Resources/app/bin"; and fish_add_path --path "/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
+fish_add_path --path $GOPATH/bin
 
 # Integrations
 # Prefer the cloned fzf (with shell integration) over an older system package.
 if test -d $HOME/.fzf/bin
-    fish_add_path --prepend $HOME/.fzf/bin
+    fish_add_path --path --prepend $HOME/.fzf/bin
 end
 if type -q fzf
     if fzf --fish >/dev/null 2>&1
@@ -69,7 +69,7 @@ end
 type -q direnv; and direnv hook fish | source
 
 # Reassert local tool priority after other PATH integrations.
-fish_add_path --prepend --move $HOME/.local/bin
+fish_add_path --path --prepend --move $HOME/.cargo/bin $HOME/.local/bin
 
 # Git aliases
 alias gss 'git status'
@@ -92,7 +92,7 @@ alias htop 'htop -d10'
 alias dps 'docker ps'
 alias dpsa 'docker ps --all'
 alias dc docker-compose
-alias docker podman
+type -q podman; and alias docker podman
 
 function update_system --description 'update the operating system packages'
     if test (uname) = Darwin
@@ -117,23 +117,20 @@ function update_system --description 'update the operating system packages'
     end
 end
 
-function update_rust --description 'update stable Rust and report toolchain disk usage'
-    rustup update stable
+function update_rust --description 'update Rust and its CLIs, then report toolchain disk usage'
+    dotfiles-rust-update
     set -l update_status $status
     type -q rustup-report; and rustup-report
     return $update_status
 end
 
 function update_rust_tools --description 'update Rust CLIs from prebuilt binaries'
-    for crate in starship ripgrep lsd bat gitui zellij
-        cargo-binstall-latest --force $crate; or return
-    end
+    dotfiles-rust-update tools
 end
 
 function sau --description 'update OS packages, stable Rust, and prebuilt Rust CLIs'
     update_system; or return
-    update_rust; or return
-    update_rust_tools
+    update_rust
 end
 
 function loop --description 'run a command repeatedly while it succeeds'

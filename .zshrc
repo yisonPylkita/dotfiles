@@ -64,23 +64,24 @@ compinit
 
 # Aliases
 get_prefered_editor() {
-	[[ $(nvim --version >/dev/null 2>&1 && echo $?) ]] && echo 'nvim' && return
-	[[ $(vim --version >/dev/null 2>&1 && echo $?) ]] && echo 'vim' && return
+	command -v nvim >/dev/null 2>&1 && echo 'nvim' && return
+	command -v vim >/dev/null 2>&1 && echo 'vim' && return
 	echo 'vi'
 }
 
 update_rust() {
-	rustup update stable
+	dotfiles-rust-update
 	local update_status=$?
 	command -v rustup-report >/dev/null 2>&1 && rustup-report
 	return $update_status
 }
 
+if [[ -z "${EDITOR:-}" ]]; then
+	export EDITOR="$(get_prefered_editor)"
+fi
+
 update_rust_tools() {
-	local crate
-	for crate in starship ripgrep lsd bat gitui zellij; do
-		cargo-binstall-latest --force "$crate" || return
-	done
+	dotfiles-rust-update tools
 }
 
 update_system() {
@@ -108,7 +109,7 @@ update_system() {
 
 alias git='LANG=en_US.UTF-8 git'
 
-alias vi="$(get_prefered_editor)"
+alias vi="$EDITOR"
 alias _='sudo '
 alias la='lsd -la'
 alias gss='git status'
@@ -119,8 +120,7 @@ alias grbi='git rebase -i'
 alias gcl='git clean -fdx'
 sau() {
 	update_system || return
-	update_rust || return
-	update_rust_tools
+	update_rust
 }
 alias sai='sudo apt install'
 alias htop='htop -d10'
@@ -166,7 +166,9 @@ fi
 #alias edge='/mnt/c/Program\ Files\ \(x86\)/Microsoft/Edge/Application/msedge.exe'
 
 # MacOS stuff
-export PATH="$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
+if [[ -d "/Applications/Visual Studio Code.app/Contents/Resources/app/bin" ]]; then
+	export PATH="$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
+fi
 
 # Homebrew on Linux
 # Run this one time
@@ -191,7 +193,7 @@ export GOPATH=$HOME/go
 export PATH=$PATH:$GOPATH/bin
 
 # A per-machine Podman socket, when needed, belongs in ~/.zsh_local.
-alias docker="podman"
+command -v podman >/dev/null 2>&1 && alias docker="podman"
 
 export LANG="en_US.UTF-8"
 export LC_ALL="en_US.UTF-8"

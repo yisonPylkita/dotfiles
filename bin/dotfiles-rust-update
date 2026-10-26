@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -eu
+
+if [ "$#" -gt 1 ]; then
+    printf 'Usage: %s [all|tools]\n' "$0" >&2
+    exit 2
+fi
+
+mode=${1:-all}
+case "$mode" in
+    all|tools) ;;
+    *)
+        printf 'Usage: %s [all|tools]\n' "$0" >&2
+        exit 2
+        ;;
+esac
+
+: "${HOME:?HOME must be set}"
+CARGO_HOME="$HOME/.cargo"
+RUSTUP_HOME="$HOME/.rustup"
+CARGO_INSTALL_ROOT="$HOME/.cargo"
+export CARGO_HOME RUSTUP_HOME CARGO_INSTALL_ROOT
+unset RUSTUP_TOOLCHAIN
+PATH="$CARGO_HOME/bin:$HOME/.local/bin:${PATH:-}"
+export PATH
+cd "$HOME"
+
+if [ "$mode" = all ]; then
+    "$CARGO_HOME/bin/rustup" update
+fi
+
+for crate in starship ripgrep lsd bat gitui zellij; do
+    "$HOME/.local/bin/cargo-binstall-latest" --force "$crate"
+done

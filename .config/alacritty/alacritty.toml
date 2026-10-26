@@ -5,7 +5,7 @@
 [general]
 # Pull the Aura theme from the upstream repo (cloned below).
 import = [
-    "~/.config/alacritty/themes/themes/aura.toml",
+    "themes/themes/aura.toml",
 ]
 # Reload config automatically when this file changes.
 live_config_reload = true
@@ -16,7 +16,7 @@ live_config_reload = true
 [window]
 decorations = "none"
 opacity = 1.0
-startup_mode = "SimpleFullscreen"
+startup_mode = "Maximized"
 option_as_alt = "Both"
 dynamic_title = true
 

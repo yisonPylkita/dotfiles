@@ -22,3 +22,5 @@ path=("$HOME/.cargo/bin" $path)
 [[ -d "$HOME/.local/share/fnm" ]] && path=("$HOME/.local/share/fnm" $path)
 path=("$HOME/.local/bin" $path)
 export PATH
+
+[[ -r "$HOME/.zshenv_local" ]] && source "$HOME/.zshenv_local"
