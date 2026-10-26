@@ -200,7 +200,9 @@ elif [[ $SYSTEM_TYPE == "MacOS" ]]; then
 	ensure_brew_formulas \
 		zsh fish tmux neovim jq fzf podman git-lfs htop \
 		python node fnm direnv uv cargo-binstall
-	ensure_brew_cask codex
+	if ! command -v codex >/dev/null 2>&1; then
+		ensure_brew_cask codex
+	fi
 
 	if [[ "$GUI_SETUP" == true ]]; then
 		echo "${BLUE}Ensuring GUI apps (brew --cask)${RESTORE}"
@@ -410,13 +412,15 @@ if [[ -z "$CONFIGURED_SHELL" ]]; then
 	printf 'Error: could not determine the configured login shell for %s.\n' "$LOGIN_USER" >&2
 	exit 1
 fi
-if [[ ! "$CONFIGURED_SHELL" -ef "$ZSH_BIN" ]]; then
+if [[ "$(basename "$CONFIGURED_SHELL")" != zsh || ! -x "$CONFIGURED_SHELL" ]] && [[ ! "$CONFIGURED_SHELL" -ef "$ZSH_BIN" ]]; then
 	sudo chsh -s "$ZSH_BIN" "$LOGIN_USER"
 fi
 
 install_nerd_font() {
 	if [[ $SYSTEM_TYPE == "MacOS" ]]; then
-		ensure_brew_cask font-caskaydia-cove-nerd-font
+		if ! find "$HOME/Library/Fonts" /Library/Fonts -type f -iname 'CaskaydiaCoveNerdFont*.ttf' -print -quit 2>/dev/null | grep -q .; then
+			ensure_brew_cask font-caskaydia-cove-nerd-font
+		fi
 	elif [[ $SYSTEM_TYPE == U* ]]; then
 		local FONT_DIR="$HOME/.local/share/fonts"
 		mkdir -p "$FONT_DIR"

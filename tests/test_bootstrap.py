@@ -74,7 +74,6 @@ class BootstrapTests(unittest.TestCase):
             ".zshrc",
             ".zshenv",
             ".zprofile",
-            ".tmux.conf",
             ".vimrc",
             ".config/fish/config.fish",
             ".config/zellij/config.kdl",
@@ -451,6 +450,49 @@ class BootstrapTests(unittest.TestCase):
         self.assertNotIn("ssh-keygen ", Path(env["CALL_LOG"]).read_text())
         self.assertNotIn("chsh ", Path(env["CALL_LOG"]).read_text())
         self.assertEqual(Path(env["NPM_GLOBAL_STATE"]).read_text().splitlines(), ["@earendil-works/pi-coding-agent"])
+
+    def test_macos_keeps_configured_zsh_when_another_zsh_is_first_on_path(self):
+        env = self._environment("Darwin")
+        Path(env["BREW_FORMULAS"]).write_text("\n".join(FORMULAS) + "\n")
+        system_bin = self.root / "system-bin"
+        system_bin.mkdir()
+        self._write_shim(system_bin, "zsh", "exit 0")
+        env["ZSH_PATH"] = str(system_bin / "zsh")
+        result = self._run(env)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = Path(env["CALL_LOG"]).read_text()
+        self.assertNotIn("chsh ", calls)
+        self.assertNotIn("sudo ", calls)
+
+    def test_macos_changes_login_shell_when_it_is_not_zsh(self):
+        env = self._environment("Darwin")
+        Path(env["BREW_FORMULAS"]).write_text("\n".join(FORMULAS) + "\n")
+        system_bin = self.root / "system-bin"
+        system_bin.mkdir()
+        self._write_shim(system_bin, "bash", "exit 0")
+        env["ZSH_PATH"] = str(system_bin / "bash")
+        result = self._run(env)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("sudo chsh -s", Path(env["CALL_LOG"]).read_text())
+
+    def test_macos_skips_font_cask_when_font_files_already_exist(self):
+        env = self._environment("Darwin")
+        Path(env["BREW_FORMULAS"]).write_text("\n".join(FORMULAS) + "\n")
+        Path(env["BREW_CASKS"]).write_text("alacritty\n")
+        fonts = self.home / "Library/Fonts"
+        fonts.mkdir(parents=True)
+        (fonts / "CaskaydiaCoveNerdFont-Bold.ttf").write_text("font")
+        result = self._run(env, "--gui")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("font-caskaydia-cove-nerd-font", Path(env["CALL_LOG"]).read_text())
+
+    def test_macos_skips_codex_cask_when_codex_is_already_on_path(self):
+        env = self._environment("Darwin")
+        Path(env["BREW_FORMULAS"]).write_text("\n".join(FORMULAS) + "\n")
+        self._write_shim(self.root / "shims", "codex", "exit 0")
+        result = self._run(env)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("--cask codex", Path(env["CALL_LOG"]).read_text())
 
     def test_ubuntu_gui_installs_only_missing_packages_and_reruns_safely(self):
         env = self._environment("Linux")

@@ -54,7 +54,6 @@ class SetupConfigTests(unittest.TestCase):
             self.home / ".config/fish/config.fish": ROOT / ".config/fish/config.fish",
             self.home / ".config/zellij/config.kdl": ROOT / ".config/zellij/config.kdl",
             self.home / ".config/nvim/init.vim": ROOT / "nvim/init.vim",
-            self.home / ".tmux.conf": ROOT / ".tmux.conf",
             self.home / ".vimrc": ROOT / ".vimrc",
             self.home / ".local/bin/cargo-binstall-latest": ROOT / "bin/cargo-binstall-latest",
         }
@@ -119,7 +118,7 @@ class SetupConfigTests(unittest.TestCase):
         (zsh_dir / ".zshrc").chmod(0o640)
         dangling_target = self.root / "missing target"
         os.symlink(str(dangling_target), config_home / "fish/config.fish")
-        (self.home / ".tmux.conf").symlink_to(self.root / "local tmux file")
+        (self.home / ".vimrc").symlink_to(self.root / "local vimrc file")
         (self.home / ".zsh_local").write_text("private zsh\n")
         (self.home / ".fish_local").write_text("private fish\n")
         (self.home / ".zshenv_local").write_text("private zshenv\n")
@@ -145,7 +144,7 @@ class SetupConfigTests(unittest.TestCase):
         physical_hook = hook.resolve()
         old_zsh = backup_dir / "originals" / str(physical_zsh).lstrip("/") / ".zshrc"
         old_fish = backup_dir / "originals" / str(physical_config).lstrip("/") / "fish/config.fish"
-        old_tmux = backup_dir / "originals" / str(physical_home).lstrip("/") / ".tmux.conf"
+        old_vimrc = backup_dir / "originals" / str(physical_home).lstrip("/") / ".vimrc"
         old_local = backup_dir / "private" / str(physical_home).lstrip("/") / ".zsh_local"
         old_fish_local = backup_dir / "private" / str(physical_home).lstrip("/") / ".fish_local"
         old_zshenv_local = backup_dir / "private" / str(physical_home).lstrip("/") / ".zshenv_local"
@@ -154,8 +153,8 @@ class SetupConfigTests(unittest.TestCase):
         self.assertEqual(stat.S_IMODE(old_zsh.stat().st_mode), 0o600)
         self.assertTrue(old_fish.is_symlink())
         self.assertEqual(os.readlink(old_fish), str(dangling_target))
-        self.assertTrue(old_tmux.is_symlink())
-        self.assertEqual(os.readlink(old_tmux), str(self.root / "local tmux file"))
+        self.assertTrue(old_vimrc.is_symlink())
+        self.assertEqual(os.readlink(old_vimrc), str(self.root / "local vimrc file"))
         self.assertEqual(old_local.read_text(), "private zsh\n")
         self.assertEqual(stat.S_IMODE(old_local.stat().st_mode), 0o600)
         self.assertEqual(old_fish_local.read_text(), "private fish\n")
@@ -215,7 +214,7 @@ class SetupConfigTests(unittest.TestCase):
     def test_fifo_target_is_refused_before_any_change(self):
         original = self.home / ".zshrc"
         original.write_bytes(b"unchanged\n")
-        os.mkfifo(self.home / ".tmux.conf")
+        os.mkfifo(self.home / ".vimrc")
         result = self.run_helper(check=False)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("refusing to replace non-file", result.stderr)

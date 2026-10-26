@@ -91,7 +91,6 @@ if [[ "$zsh_only" != true ]]; then
 	add_link "$repo_dir/.config/fish/config.fish" "$config_home/fish/config.fish"
 	add_link "$repo_dir/.config/zellij/config.kdl" "$config_home/zellij/config.kdl"
 	add_link "$repo_dir/nvim/init.vim" "$config_home/nvim/init.vim"
-	add_link "$repo_dir/.tmux.conf" "$home_dir/.tmux.conf"
 	add_link "$repo_dir/.vimrc" "$home_dir/.vimrc"
 	if [[ "$gui_setup" == true ]]; then
 		add_link "$repo_dir/.config/alacritty/alacritty.toml" "$config_home/alacritty/alacritty.toml"
