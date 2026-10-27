@@ -9,7 +9,6 @@ import time
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 BASH = shutil.which("bash")
 
@@ -40,6 +39,7 @@ class SetupConfigTests(unittest.TestCase):
             text=True,
             capture_output=True,
             timeout=30,
+            check=False,
         )
         if check and result.returncode != 0:
             self.fail(result.stdout + result.stderr)
@@ -51,12 +51,12 @@ class SetupConfigTests(unittest.TestCase):
             self.home / ".zshrc": ROOT / ".zshrc",
             self.home / ".zshenv": ROOT / ".zshenv",
             self.home / ".zprofile": ROOT / ".zprofile",
-            self.home / ".config/fish/config.fish": ROOT / ".config/fish/config.fish",
             self.home / ".config/zellij/config.kdl": ROOT / ".config/zellij/config.kdl",
             self.home / ".config/nvim/init.vim": ROOT / "nvim/init.vim",
-            self.home / ".vimrc": ROOT / ".vimrc",
+            self.home / ".vimrc": ROOT / "nvim/init.vim",
             self.home / ".local/bin/cargo-binstall-latest": ROOT / "bin/cargo-binstall-latest",
         }
+        links[self.home / ".local/bin/rustup-report"] = ROOT / "bin/rustup-report"
         rust_update = ROOT / "bin/dotfiles-rust-update"
         if rust_update.exists():
             links[self.home / ".local/bin/dotfiles-rust-update"] = rust_update
@@ -73,7 +73,6 @@ class SetupConfigTests(unittest.TestCase):
 
         local_files = [
             self.home / ".zsh_local",
-            self.home / ".fish_local",
             self.home / ".zshenv_local",
             self.home / ".config/dotfiles/setup.local.bash",
         ]
@@ -106,6 +105,25 @@ class SetupConfigTests(unittest.TestCase):
         self.assertNotIn("Backups stored under", second.stdout)
         self.assertEqual(os.readlink(self.home / ".zshrc"), str(ROOT / ".zshrc"))
 
+    def test_stale_managed_links_are_pruned(self):
+        stale = self.home / ".config/removed-shell/config"
+        stale.parent.mkdir(parents=True)
+        stale.symlink_to(ROOT / ".config/removed-shell/config")
+        unrelated = self.home / ".config/ai/custom-link"
+        unrelated.parent.mkdir(parents=True)
+        unrelated.symlink_to(ROOT / ".zshenv")
+        manifest = self.home / ".local/state/dotfiles/managed-links.tsv"
+        manifest.parent.mkdir(parents=True)
+        manifest.write_text(f"{stale}\n")
+
+        self.run_helper()
+
+        self.assertFalse(stale.is_symlink())
+        self.assertTrue(unrelated.is_symlink())
+        current = manifest.read_text().splitlines()
+        self.assertNotIn(str(stale.resolve()), current)
+        self.assertIn(str(self.home.resolve() / ".zshrc"), current)
+
     def test_backup_preserves_bytes_links_and_private_overrides(self):
         config_home = self.home / "config directory"
         zsh_dir = self.home / "zsh directory"
@@ -113,14 +131,13 @@ class SetupConfigTests(unittest.TestCase):
         config_home.mkdir()
         zsh_dir.mkdir()
         state_home.mkdir()
-        (config_home / "fish").mkdir()
+        (config_home / "zellij").mkdir()
         (zsh_dir / ".zshrc").write_bytes(b"old zsh config\n")
         (zsh_dir / ".zshrc").chmod(0o640)
         dangling_target = self.root / "missing target"
-        os.symlink(str(dangling_target), config_home / "fish/config.fish")
+        os.symlink(str(dangling_target), config_home / "zellij/config.kdl")
         (self.home / ".vimrc").symlink_to(self.root / "local vimrc file")
         (self.home / ".zsh_local").write_text("private zsh\n")
-        (self.home / ".fish_local").write_text("private fish\n")
         (self.home / ".zshenv_local").write_text("private zshenv\n")
         (self.home / ".config/dotfiles").mkdir(parents=True)
         hook = self.home / ".config/dotfiles/setup.local.bash"
@@ -143,30 +160,27 @@ class SetupConfigTests(unittest.TestCase):
         physical_zsh = zsh_dir.resolve()
         physical_hook = hook.resolve()
         old_zsh = backup_dir / "originals" / str(physical_zsh).lstrip("/") / ".zshrc"
-        old_fish = backup_dir / "originals" / str(physical_config).lstrip("/") / "fish/config.fish"
+        old_zellij = backup_dir / "originals" / str(physical_config).lstrip("/") / "zellij/config.kdl"
         old_vimrc = backup_dir / "originals" / str(physical_home).lstrip("/") / ".vimrc"
         old_local = backup_dir / "private" / str(physical_home).lstrip("/") / ".zsh_local"
-        old_fish_local = backup_dir / "private" / str(physical_home).lstrip("/") / ".fish_local"
         old_zshenv_local = backup_dir / "private" / str(physical_home).lstrip("/") / ".zshenv_local"
         old_hook = backup_dir / "private" / str(physical_hook).lstrip("/")
         self.assertEqual(old_zsh.read_bytes(), b"old zsh config\n")
         self.assertEqual(stat.S_IMODE(old_zsh.stat().st_mode), 0o600)
-        self.assertTrue(old_fish.is_symlink())
-        self.assertEqual(os.readlink(old_fish), str(dangling_target))
+        self.assertTrue(old_zellij.is_symlink())
+        self.assertEqual(os.readlink(old_zellij), str(dangling_target))
         self.assertTrue(old_vimrc.is_symlink())
         self.assertEqual(os.readlink(old_vimrc), str(self.root / "local vimrc file"))
         self.assertEqual(old_local.read_text(), "private zsh\n")
         self.assertEqual(stat.S_IMODE(old_local.stat().st_mode), 0o600)
-        self.assertEqual(old_fish_local.read_text(), "private fish\n")
         self.assertEqual(old_zshenv_local.read_text(), "private zshenv\n")
         self.assertEqual(old_hook.read_text(), "private hook\n")
         self.assertEqual((self.home / ".zsh_local").read_text(), "private zsh\n")
-        self.assertEqual((self.home / ".fish_local").read_text(), "private fish\n")
         self.assertEqual((self.home / ".zshenv_local").read_text(), "private zshenv\n")
         self.assertEqual(hook.read_text(), "private hook\n")
         self.assertIn(str(physical_zsh / ".zshrc"), (backup_dir / "manifest.tsv").read_text())
         self.assertTrue((zsh_dir / ".zshrc").is_symlink())
-        self.assertTrue((config_home / "fish/config.fish").is_symlink())
+        self.assertTrue((config_home / "zellij/config.kdl").is_symlink())
 
     def test_existing_local_and_pi_files_are_preserved(self):
         local = self.home / ".zsh_local"
@@ -182,7 +196,6 @@ class SetupConfigTests(unittest.TestCase):
         self.assertEqual(settings.read_text(), '{"mine":true}\n')
         self.assertTrue(trust.is_symlink())
         self.assertEqual(os.readlink(trust), str(self.root / "dangling trust"))
-        self.assertTrue((self.home / ".fish_local").is_file())
 
     def test_directory_target_is_refused_before_any_change(self):
         original = self.home / ".zshrc"
@@ -257,7 +270,7 @@ class SetupConfigTests(unittest.TestCase):
         local.parent.mkdir(parents=True)
         local.write_bytes(b"local rules\n")
 
-        result = self.run_helper("--zsh-only")
+        result = self.run_helper()
         self.assertIn("Backups stored under", result.stdout)
         generated = self.home / ".config/ai/AGENTS.md"
         self.assertEqual(
@@ -278,23 +291,6 @@ class SetupConfigTests(unittest.TestCase):
         self.assertTrue(alacritty.is_symlink())
         self.assertEqual(os.readlink(alacritty), str(ROOT / ".config/alacritty/alacritty.toml"))
         self.assertFalse((config_home / "alacritty/themes").exists())
-
-    def test_setup_zsh_wrapper_installs_zsh_and_required_helpers(self):
-        result = subprocess.run(
-            [BASH, str(ROOT / "setup-zsh.sh")],
-            cwd=ROOT,
-            env=self.env,
-            text=True,
-            capture_output=True,
-            timeout=30,
-        )
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        for name in [".zshrc", ".zshenv", ".zprofile"]:
-            self.assertTrue((self.home / name).is_symlink())
-        for name in ["cargo-binstall-latest", "dotfiles-rust-update", "dotfiles-ai-build"]:
-            self.assertTrue((self.home / ".local/bin" / name).is_symlink())
-        self.assertFalse((self.home / ".config/fish/config.fish").exists())
-        self.assertFalse((self.home / ".pi/agent/settings.json").exists())
 
     def test_link_failure_rolls_back_prior_links_and_original_modes(self):
         (self.home / ".zshrc").write_bytes(b"original\n")

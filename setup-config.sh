@@ -5,19 +5,14 @@ umask 077
 
 repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 gui_setup=false
-zsh_only=false
 while (( $# > 0 )); do
 	case "$1" in
 		--gui)
 			gui_setup=true
 			shift
 			;;
-		--zsh-only)
-			zsh_only=true
-			shift
-			;;
 		--help|-h)
-			printf 'Usage: setup-config.sh [--gui] [--zsh-only]\n'
+			printf 'Usage: setup-config.sh [--gui]\n'
 			exit 0
 			;;
 		*)
@@ -26,11 +21,6 @@ while (( $# > 0 )); do
 			;;
 	esac
 done
-
-if [[ "$gui_setup" == true && "$zsh_only" == true ]]; then
-	printf 'Error: --gui cannot be combined with --zsh-only.\n' >&2
-	exit 64
-fi
 
 home_dir="$(cd -P "$HOME" && pwd -P)"
 config_home="${XDG_CONFIG_HOME:-$home_dir/.config}"
@@ -86,25 +76,21 @@ add_link "$repo_dir/.zprofile" "$zsh_dir/.zprofile"
 add_link "$repo_dir/bin/cargo-binstall-latest" "$home_dir/.local/bin/cargo-binstall-latest"
 add_link "$repo_dir/bin/dotfiles-rust-update" "$home_dir/.local/bin/dotfiles-rust-update"
 add_link "$repo_dir/bin/dotfiles-ai-build" "$home_dir/.local/bin/dotfiles-ai-build"
-
-if [[ "$zsh_only" != true ]]; then
-	add_link "$repo_dir/.config/fish/config.fish" "$config_home/fish/config.fish"
-	add_link "$repo_dir/.config/zellij/config.kdl" "$config_home/zellij/config.kdl"
-	add_link "$repo_dir/nvim/init.vim" "$config_home/nvim/init.vim"
-	add_link "$repo_dir/.vimrc" "$home_dir/.vimrc"
-	if [[ "$gui_setup" == true ]]; then
-		add_link "$repo_dir/.config/alacritty/alacritty.toml" "$config_home/alacritty/alacritty.toml"
-	fi
-	add_seed "$repo_dir/.pi/agent/settings.json" "$home_dir/.pi/agent/settings.json"
-	add_seed "$repo_dir/.pi/agent/trust.json" "$home_dir/.pi/agent/trust.json"
-	add_seed "$repo_dir/.pi/agent/npm/package.json" "$home_dir/.pi/agent/npm/package.json"
-	add_seed "$repo_dir/.pi/agent/extensions/eko24ive-pi-ask.json" "$home_dir/.pi/agent/extensions/eko24ive-pi-ask.json"
-	add_seed "$repo_dir/.pi/agent/extensions/pi-rtk-optimizer/config.json" "$home_dir/.pi/agent/extensions/pi-rtk-optimizer/config.json"
-	add_empty "$home_dir/.zsh_local"
-	add_empty "$home_dir/.fish_local"
-	add_empty "$home_dir/.zshenv_local"
-	add_empty "$home_dir/.config/dotfiles/setup.local.bash"
+add_link "$repo_dir/bin/rustup-report" "$home_dir/.local/bin/rustup-report"
+add_link "$repo_dir/.config/zellij/config.kdl" "$config_home/zellij/config.kdl"
+add_link "$repo_dir/nvim/init.vim" "$config_home/nvim/init.vim"
+add_link "$repo_dir/nvim/init.vim" "$home_dir/.vimrc"
+if [[ "$gui_setup" == true ]]; then
+	add_link "$repo_dir/.config/alacritty/alacritty.toml" "$config_home/alacritty/alacritty.toml"
 fi
+add_seed "$repo_dir/.pi/agent/settings.json" "$home_dir/.pi/agent/settings.json"
+add_seed "$repo_dir/.pi/agent/trust.json" "$home_dir/.pi/agent/trust.json"
+add_seed "$repo_dir/.pi/agent/npm/package.json" "$home_dir/.pi/agent/npm/package.json"
+add_seed "$repo_dir/.pi/agent/extensions/eko24ive-pi-ask.json" "$home_dir/.pi/agent/extensions/eko24ive-pi-ask.json"
+add_seed "$repo_dir/.pi/agent/extensions/pi-rtk-optimizer/config.json" "$home_dir/.pi/agent/extensions/pi-rtk-optimizer/config.json"
+add_empty "$home_dir/.zsh_local"
+add_empty "$home_dir/.zshenv_local"
+add_empty "$home_dir/.config/dotfiles/setup.local.bash"
 
 canonicalize_target() {
 	local target="$1"
@@ -150,6 +136,15 @@ canonicalize_target() {
 	fi
 }
 
+canonicalize_target "$state_home/dotfiles/managed-links.tsv"
+managed_manifest="$NORMALIZED_TARGET"
+previous_links=()
+if [[ -f "$managed_manifest" ]]; then
+	while IFS= read -r previous_link; do
+		[[ -n "$previous_link" ]] && previous_links+=("$previous_link")
+	done < "$managed_manifest"
+fi
+
 ai_generated_file="$config_home/ai/AGENTS.md"
 canonicalize_target "$ai_generated_file"
 ai_generated_file="$NORMALIZED_TARGET"
@@ -157,7 +152,10 @@ if [[ ! -f "$repo_dir/ai/AGENTS.md" || ! -x "$repo_dir/bin/dotfiles-ai-build" ]]
 	printf 'Error: AI instruction sources are missing from %s\n' "$repo_dir" >&2
 	exit 1
 fi
-XDG_CONFIG_HOME="$config_home" DOTFILES_DIR="$repo_dir" "$repo_dir/bin/dotfiles-ai-build"
+if [[ -d "$ai_generated_file" ]]; then
+	printf 'Error: refusing to replace directory: %s\n' "$ai_generated_file" >&2
+	exit 1
+fi
 add_link "$ai_generated_file" "$home_dir/.claude/CLAUDE.md"
 add_link "$ai_generated_file" "$home_dir/.codex/AGENTS.md"
 
@@ -169,7 +167,7 @@ all_targets=()
 for ((i = 0; i < ${#link_sources[@]}; i++)); do
 	source="${link_sources[$i]}"
 	target="${link_targets[$i]}"
-	if [[ ! -f "$source" || -L "$source" ]]; then
+	if [[ "$source" != "$ai_generated_file" ]] && [[ ! -f "$source" || -L "$source" ]]; then
 		printf 'Error: missing regular repository file: %s\n' "$source" >&2
 		exit 1
 	fi
@@ -265,6 +263,7 @@ undo_backups=()
 undo_modes=()
 undo_seeds=()
 backup_dir=''
+ai_temp_file=''
 committed=false
 rolling_back=false
 
@@ -324,6 +323,43 @@ snapshot_private_entry() {
 	append_manifest "$source" "$destination" "$mode"
 }
 
+prune_managed_links() {
+	local old_target desired current
+	local keep
+	local failed=false
+	if (( ${#previous_links[@]} > 0 )); then
+		for old_target in "${previous_links[@]}"; do
+			keep=false
+			for desired in "${canonical_link_targets[@]}"; do
+				if [[ "$old_target" == "$desired" ]]; then
+					keep=true
+					break
+				fi
+			done
+			[[ "$keep" == true ]] && continue
+			[[ -L "$old_target" ]] || continue
+			current="$(readlink "$old_target" 2>/dev/null || true)"
+			case "$current" in
+				"$repo_dir"|"$repo_dir"/*)
+					if [[ ! -e "$current" ]]; then
+						rm -f "$old_target" || failed=true
+					fi
+					;;
+			esac
+		done
+	fi
+	[[ "$failed" == false ]]
+}
+
+write_managed_links() {
+	local temp_file
+	ensure_directory "${managed_manifest%/*}"
+	temp_file="$(mktemp "${managed_manifest}.XXXXXX")"
+	printf '%s\n' "${canonical_link_targets[@]}" > "$temp_file"
+	chmod 600 "$temp_file"
+	mv -f "$temp_file" "$managed_manifest"
+}
+
 rollback() {
 	local status=$?
 	local index target source backup seed mode
@@ -334,6 +370,9 @@ rollback() {
 	rolling_back=true
 	trap - EXIT HUP INT TERM
 	set +e
+	if [[ -n "$ai_temp_file" && ( -e "$ai_temp_file" || -L "$ai_temp_file" ) ]]; then
+		rm -f "$ai_temp_file" || restore_failed=true
+	fi
 	for ((index = ${#undo_seeds[@]} - 1; index >= 0; index--)); do
 		seed="${undo_seeds[$index]}"
 		rm -f "$seed" || restore_failed=true
@@ -385,12 +424,16 @@ if [[ "$backup_needed" == true ]]; then
 	chmod 700 "$backup_dir"
 	for private_path in \
 		"$home_dir/.zsh_local" \
-		"$home_dir/.fish_local" \
 		"$home_dir/.zshenv_local" \
 		"$home_dir/.config/dotfiles/setup.local.bash"; do
 		snapshot_private_entry "$private_path"
 	done
 fi
+
+ensure_directory "${ai_generated_file%/*}"
+ai_temp_file="$(mktemp "${ai_generated_file%/*}/.AGENTS.md.XXXXXX")"
+XDG_CONFIG_HOME="$config_home" DOTFILES_DIR="$repo_dir" \
+	"$repo_dir/bin/dotfiles-ai-build" --output "$ai_temp_file"
 
 for ((i = 0; i < ${#link_sources[@]}; i++)); do
 	source="${link_sources[$i]}"
@@ -445,8 +488,15 @@ for ((i = 0; i < ${#empty_targets[@]}; i++)); do
 	chmod 600 "$target"
 done
 
+mv -f "$ai_temp_file" "$ai_generated_file"
+ai_temp_file=''
+
 committed=true
 trap - EXIT HUP INT TERM
+if ! prune_managed_links; then
+	printf 'Warning: some stale managed links could not be removed.\n' >&2
+fi
+write_managed_links
 printf 'Configuration links point to %s\n' "$repo_dir"
 if [[ -n "$backup_dir" ]]; then
 	printf 'Backups stored under %s\n' "$backup_dir"

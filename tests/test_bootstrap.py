@@ -5,12 +5,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 BASH = "/bin/bash"
 FORMULAS = [
     "zsh",
-    "fish",
     "tmux",
     "neovim",
     "jq",
@@ -27,7 +25,6 @@ FORMULAS = [
 ]
 APT_PACKAGES = [
     "zsh",
-    "fish",
     "tmux",
     "cmake",
     "neovim",
@@ -74,8 +71,6 @@ class BootstrapTests(unittest.TestCase):
             ".zshrc",
             ".zshenv",
             ".zprofile",
-            ".vimrc",
-            ".config/fish/config.fish",
             ".config/zellij/config.kdl",
             ".config/alacritty/alacritty.toml",
             "nvim/init.vim",
@@ -86,6 +81,7 @@ class BootstrapTests(unittest.TestCase):
             ".pi/agent/extensions/pi-rtk-optimizer/config.json",
             "bin/dotfiles-rust-update",
             "bin/dotfiles-ai-build",
+            "bin/rustup-report",
             "ai/AGENTS.md",
         ]
         for relative in files:
@@ -381,7 +377,6 @@ class BootstrapTests(unittest.TestCase):
         )
         hook.write_text(hook_contents)
         (self.home / ".zsh_local").write_text("private zsh setting\n")
-        (self.home / ".fish_local").write_text("private fish setting\n")
         (self.home / ".zshenv_local").write_text("private env setting\n")
         return hook, hook_contents
 

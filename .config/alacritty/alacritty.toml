@@ -1,32 +1,13 @@
-# ============================================================================
-# Alacritty config — macOS, Zellij-driven, fullscreen, Aura theme
-# ============================================================================
-
 [general]
-# Pull the Aura theme from the upstream repo (cloned below).
-import = [
-    "themes/themes/aura.toml",
-]
-# Reload config automatically when this file changes.
-live_config_reload = true
+import = ["themes/themes/aura.toml"]
 
-# ----------------------------------------------------------------------------
-# Window
-# ----------------------------------------------------------------------------
+# Run maximized, not fullscreen: this keeps the macOS menu/status bar visible
+# and keeps terminal content clear of the MacBook Pro notch.
 [window]
 decorations = "none"
-opacity = 1.0
 startup_mode = "Maximized"
 option_as_alt = "Both"
-dynamic_title = true
 
-[window.padding]
-x = 0
-y = 0
-
-# ----------------------------------------------------------------------------
-# Font — CaskaydiaCove Nerd Font Mono
-# ----------------------------------------------------------------------------
 [font]
 size = 13.0
 
@@ -46,46 +27,25 @@ style = "Italic"
 family = "CaskaydiaCove Nerd Font Mono"
 style = "Bold Italic"
 
-# ----------------------------------------------------------------------------
-# Scrollback — big buffer, you have RAM to spare
-# ----------------------------------------------------------------------------
 [scrolling]
 history = 100000
-multiplier = 3
 
-# ----------------------------------------------------------------------------
-# Mouse
-# ----------------------------------------------------------------------------
 [mouse]
 hide_when_typing = true
 
-# ----------------------------------------------------------------------------
-# Cursor
-# ----------------------------------------------------------------------------
 [cursor]
 style = { shape = "Block", blinking = "On" }
-unfocused_hollow = true
 
-# ----------------------------------------------------------------------------
-# Shell — auto-attach to Zellij session "main"
-# ----------------------------------------------------------------------------
 [terminal.shell]
 program = "/bin/zsh"
 args = ["-l", "-c", "zellij attach -c main || zellij"]
 
-# ----------------------------------------------------------------------------
-# Keybindings
-# ----------------------------------------------------------------------------
-
-# Disable Cmd+N (new window) — single-window experience.
 [[keyboard.bindings]]
 key = "N"
 mods = "Command"
 action = "ReceiveChar"
 
-# Disable Cmd+T just in case (no-op anyway, but explicit).
 [[keyboard.bindings]]
 key = "T"
 mods = "Command"
 action = "ReceiveChar"
-

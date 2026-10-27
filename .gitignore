@@ -4,7 +4,6 @@ __pycache__/
 
 # Private credentials and per-machine overrides must never enter Git.
 .zsh_local
-.fish_local
 .zshenv_local
 .config/dotfiles/setup.local.bash
 .env

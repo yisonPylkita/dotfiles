@@ -2,13 +2,12 @@ import contextlib
 import importlib.machinery
 import importlib.util
 import io
-from pathlib import Path
 import sys
 import tempfile
 import types
 import unittest
+from pathlib import Path
 from unittest.mock import patch
-
 
 ROOT = Path(__file__).resolve().parents[1]
 HELPER = ROOT / "bin" / "cargo-binstall-latest"

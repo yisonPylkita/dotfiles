@@ -1,4 +1,4 @@
-# Shared interactive settings. setup-zsh.sh links this file into your home.
+# Shared interactive settings. setup-config.sh links this file into your home.
 # Credentials and machine-specific overrides belong in ~/.zsh_local (ignored).
 
 # Skip all this for non-interactive shells
@@ -10,22 +10,7 @@ if command -v fnm >/dev/null 2>&1; then
 	eval "$(fnm env --use-on-cd --shell zsh)"
 fi
 
-# Set prompt
-#
-# Ok, this is quite serious actually
-# I need my prompt to provide me these features:
-#  - Is this a SSH connection or not?
-#  - Show me parent and current directory
-#  - Show me status of last command
-#  - Show me date of the time when prompt was created (so for every Return
-#    key I'll get new date) up to seconds precision
-#  - [Optional] Show me time of last command execution
-#  - [Optional] Show me if I'm in a git repo
-#
-
-#setopt prompt_subst # To be able to call functions inside of prompts
-#PS1='$(~/.zsh_tools/prompt-rs --error $?)'
-#RPS1='$(~/.zsh_tools/prompt-rs --rprompt)'
+# Prompt
 if command -v starship >/dev/null 2>&1; then
 	eval "$(starship init zsh)"
 fi
@@ -59,11 +44,8 @@ fi
 autoload -Uz compinit
 compinit
 
-# Don't pause terminal on Ctrl+S
-[[ $- != *i* ]] && return
-
 # Aliases
-get_prefered_editor() {
+get_preferred_editor() {
 	command -v nvim >/dev/null 2>&1 && echo 'nvim' && return
 	command -v vim >/dev/null 2>&1 && echo 'vim' && return
 	echo 'vi'
@@ -77,7 +59,7 @@ update_rust() {
 }
 
 if [[ -z "${EDITOR:-}" ]]; then
-	export EDITOR="$(get_prefered_editor)"
+	export EDITOR="$(get_preferred_editor)"
 fi
 
 update_rust_tools() {
@@ -89,20 +71,8 @@ update_system() {
 		brew update && brew upgrade
 	elif command -v apt >/dev/null 2>&1; then
 		sudo apt update && sudo apt upgrade --yes
-	elif command -v dnf >/dev/null 2>&1; then
-		sudo dnf upgrade --refresh -y
-	elif command -v yum >/dev/null 2>&1; then
-		sudo yum update -y
-	elif command -v pacman >/dev/null 2>&1; then
-		sudo pacman -Syu --noconfirm
-	elif command -v zypper >/dev/null 2>&1; then
-		sudo zypper refresh && sudo zypper update -y
-	elif command -v apk >/dev/null 2>&1; then
-		sudo apk update && sudo apk upgrade
-	elif command -v brew >/dev/null 2>&1; then
-		brew update && brew upgrade
 	else
-		echo "Unknown OS; cannot update automatically" >&2
+		echo "Unsupported OS; cannot update automatically" >&2
 		return 1
 	fi
 }
@@ -127,20 +97,7 @@ alias htop='htop -d10'
 # Docker aliases
 alias dps='docker ps'
 alias dpsa='docker ps --all'
-#alias docker_kill_all='docker ps | awk {' print $1 '} | tail -n+2 > tmp.txt; for line in $(cat tmp.txt); do docker kill $line; done; rm tmp.txt'
-#alias docker_remove_all='docker stop $(docker ps -qa); docker rm $(docker ps -qa); docker rmi -f $(docker images -qa); docker volume rm $(docker volume ls -q); docker network rm $(docker network ls -q)'
 alias dc='docker-compose'
-
-# Sway config
-#export BEMENU_BACKEND=wayland
-#export MOZ_ENABLE_WAYLAND=1
-#alias sway='export XKB_DEFAULT_LAYOUT=pl; export XKB_DEFAULT_MODEL=pc104; sway'
-
-# exports
-# export XDG_CONFIG_HOME=~/.config
-
-# standard PATH adjustments
-path=("$HOME/.cargo/bin" "$HOME/.local/bin" $path)
 
 # fzf - commands history fuzzy finder. Also interactive files searcher
 # Prefer the cloned fzf (with shell integration) over an older system package.
@@ -154,28 +111,12 @@ if [[ -r "$HOME/.cargo/env" ]]; then
 	source "$HOME/.cargo/env"
 fi
 
-# Sign my commits with a GPG key
-#eval $(gpg-agent --daemon)
-#export GPG_TTY=$(tty)
-
-# SSH agent setup
-# Add `ssh-agent -s > ~/.ssh/active_agent.env` to your ~/.profile and after login execute `ssh-add`
-#eval '$(cat ~/.ssh/active_agent.env)'
-
-# WSL stuff
-#alias edge='/mnt/c/Program\ Files\ \(x86\)/Microsoft/Edge/Application/msedge.exe'
-
 # MacOS stuff
 if [[ -d "/Applications/Visual Studio Code.app/Contents/Resources/app/bin" ]]; then
 	export PATH="$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
 fi
 
 # Homebrew on Linux
-# Run this one time
-#/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-#echo '# Set PATH, MANPATH, etc., for Homebrew.' >> "$HOME/.zprofile"
-#echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> "$HOME/.zprofile"
-
 [[ -f "/home/linuxbrew/.linuxbrew/bin/brew" ]] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
 alias gcm="git checkout main"
@@ -187,10 +128,8 @@ if command -v direnv >/dev/null 2>&1; then
 	eval "$(direnv hook zsh)"
 fi
 
-export PATH="$PATH:$HOME/.local/bin"
-
-export GOPATH=$HOME/go
-export PATH=$PATH:$GOPATH/bin
+export GOPATH="$HOME/go"
+export PATH="$PATH:$GOPATH/bin"
 
 # A per-machine Podman socket, when needed, belongs in ~/.zsh_local.
 command -v podman >/dev/null 2>&1 && alias docker="podman"

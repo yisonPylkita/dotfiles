@@ -1,16 +1,31 @@
 #!/usr/bin/env bash
 set -eu
 
+tools='starship starship
+ripgrep rg
+lsd lsd
+bat bat
+gitui gitui
+zellij zellij'
+
+usage() {
+    printf 'Usage: %s [all|tools|--list]\n' "$0" >&2
+}
+
 if [ "$#" -gt 1 ]; then
-    printf 'Usage: %s [all|tools]\n' "$0" >&2
+    usage
     exit 2
 fi
 
 mode=${1:-all}
 case "$mode" in
+    --list|list)
+        printf '%s\n' "$tools"
+        exit 0
+        ;;
     all|tools) ;;
     *)
-        printf 'Usage: %s [all|tools]\n' "$0" >&2
+        usage
         exit 2
         ;;
 esac
@@ -29,6 +44,6 @@ if [ "$mode" = all ]; then
     "$CARGO_HOME/bin/rustup" update stable
 fi
 
-for crate in starship ripgrep lsd bat gitui zellij; do
+while read -r crate _; do
     "$HOME/.local/bin/cargo-binstall-latest" --force "$crate"
-done
+done <<< "$tools"

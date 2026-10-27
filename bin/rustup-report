@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Report installed Rust toolchains, their disk usage, and whether cleanup is worthwhile.
+# Report installed Rust toolchains and their disk usage.
 
 set -euo pipefail
 
@@ -47,10 +47,14 @@ format_kb() {
 	}'
 }
 
+status_for() {
+	printf '%s\n' "$toolchain_status" | awk -v n="$1" '$1 == n { $1 = ""; sub(/^ /, ""); print; exit }'
+}
+
 printf 'Installed Rust toolchains: %d (%s total)\n\n' "$count" "$(format_kb "$total_kb")"
 
 printf '%s' "$rows" | sort -rn | while IFS=$'\t' read -r size_kb name; do
-	status=$(printf '%s\n' "$toolchain_status" | awk -v n="$name" '$1 == n { $1 = ""; sub(/^ /, ""); print }')
+	status="$(status_for "$name")"
 	if [[ -n $status ]]; then
 		printf '  %-6s %s %s\n' "$(format_kb "$size_kb")" "$name" "$status"
 	else
@@ -71,13 +75,13 @@ else
 			case $name in
 				stable|stable-*) continue ;;
 			esac
-			status=$(printf '%s\n' "$toolchain_status" | awk -v n="$name" '$1 == n { $1 = ""; sub(/^ /, ""); print; exit }')
+			status="$(status_for "$name")"
 			case $status in
 				*active*|*default*) continue ;;
 			esac
 			review_names+=("$name")
 			review_count=$((review_count + 1))
-			review_kb=$((review_kb + toolchain_sizes[$index]))
+			review_kb=$((review_kb + toolchain_sizes[index]))
 		done
 	fi
 	if (( review_count == 0 )); then

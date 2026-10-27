@@ -1,12 +1,11 @@
 import json
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HELPER = ROOT / "bin" / "dotfiles-rust-update"
@@ -146,6 +145,23 @@ class RustUpdateTests(unittest.TestCase):
         self.assertEqual([call["kind"] for call in calls], ["binstall"] * 6)
         self.assertEqual([call["args"][1] for call in calls], CRATES)
 
+    def test_list_reports_crates_and_binaries(self):
+        result = self._run("--list")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            result.stdout.splitlines(),
+            [
+                "starship starship",
+                "ripgrep rg",
+                "lsd lsd",
+                "bat bat",
+                "gitui gitui",
+                "zellij zellij",
+            ],
+        )
+        self.assertFalse(self.log.exists())
+
     def test_stops_when_rustup_fails(self):
         result = self._run(RUSTUP_EXIT="17")
 
@@ -167,39 +183,6 @@ class ShellSyntaxTests(unittest.TestCase):
             ["bash", "-n", str(HELPER)], capture_output=True, text=True, check=False
         )
         self.assertEqual(result.returncode, 0, result.stderr)
-
-    @unittest.skipUnless(shutil.which("fish"), "fish is unavailable")
-    def test_fish_config_syntax(self):
-        result = subprocess.run(
-            ["fish", "-n", str(ROOT / ".config" / "fish" / "config.fish")],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-
-    @unittest.skipUnless(shutil.which("fish"), "fish is unavailable")
-    def test_noninteractive_fish_adds_cargo_path_without_env_file(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            home = Path(temp_dir)
-            (home / ".cargo" / "bin").mkdir(parents=True)
-            env = os.environ.copy()
-            env["HOME"] = str(home)
-            env["CONFIG_FILE"] = str(ROOT / ".config" / "fish" / "config.fish")
-            result = subprocess.run(
-                [
-                    "fish",
-                    "--no-config",
-                    "-c",
-                    'source $CONFIG_FILE; contains -- "$HOME/.cargo/bin" $PATH; or exit 1; if set -q fish_user_paths; and contains -- "$HOME/.cargo/bin" $fish_user_paths; exit 2; end',
-                ],
-                cwd=ROOT,
-                env=env,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            self.assertEqual(result.returncode, 0, result.stderr)
 
     @unittest.skipUnless(shutil.which("zsh"), "zsh is unavailable")
     def test_zsh_config_syntax(self):

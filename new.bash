@@ -183,7 +183,7 @@ ensure_apt_packages() {
 if [[ $SYSTEM_TYPE == U* ]]; then
 	echo "${BLUE}Ensuring system packages (apt)${RESTORE}"
 	ensure_apt_packages \
-		zsh fish tmux cmake neovim build-essential pkg-config openssl libssl-dev \
+		zsh tmux cmake neovim build-essential pkg-config openssl libssl-dev \
 		jq fzf curl git git-lfs htop ca-certificates unzip fontconfig \
 		python3 python3-venv python3-pip pipx direnv nodejs npm
 
@@ -198,7 +198,7 @@ elif [[ $SYSTEM_TYPE == "MacOS" ]]; then
 	ensure_homebrew
 	echo "${BLUE}Ensuring CLI tools (brew)${RESTORE}"
 	ensure_brew_formulas \
-		zsh fish tmux neovim jq fzf podman git-lfs htop \
+		zsh tmux neovim jq fzf podman git-lfs htop \
 		python node fnm direnv uv cargo-binstall
 	if ! command -v codex >/dev/null 2>&1; then
 		ensure_brew_cask codex
@@ -212,7 +212,7 @@ elif [[ $SYSTEM_TYPE == "MacOS" ]]; then
 				# the official GitHub release, which passes Gatekeeper on macOS 26.
 				echo "${BLUE}Homebrew cask unavailable; installing Alacritty from GitHub...${RESTORE}"
 				if [[ ! -d "/Applications/Alacritty.app" ]]; then
-					alacritty_version=0.17.0
+					alacritty_version="${ALACRITTY_VERSION:-0.17.0}"
 					alacritty_tmp="$(mktemp -d)"
 					mkdir -p "$alacritty_tmp/mnt"
 					curl -fL "https://github.com/alacritty/alacritty/releases/download/v${alacritty_version}/Alacritty-v${alacritty_version}.dmg" -o "$alacritty_tmp/Alacritty.dmg"
@@ -257,13 +257,13 @@ fi
 
 eval "$(fnm env --shell bash)"
 if ! command -v node >/dev/null 2>&1 || ! node -e '
-	const [major, minor] = process.versions.node.split(".").map(Number);
-	process.exit(major > 22 || (major === 22 && minor >= 19) ? 0 : 1);
+	const major = Number(process.versions.node.split(".")[0]);
+	process.exit(major >= 24 ? 0 : 1);
 '; then
-	echo "${BLUE}System Node is too old; installing Node 22 LTS with fnm${RESTORE}"
-	fnm install 22
-	fnm default 22
-	fnm use 22
+	echo "${BLUE}System Node is too old; installing Node 24 LTS with fnm${RESTORE}"
+	fnm install 24
+	fnm default 24
+	fnm use 24
 fi
 
 echo "${BLUE}Installing npm tools${RESTORE}"
@@ -312,7 +312,7 @@ SSH_WAS_AVAILABLE=true
 if [[ -z "$DOTFILES_DIR" && ! -d "$HOME/dotfiles" ]]; then
 	# Try SSH first; fall back to HTTPS if no key is registered with GitHub
 	SSH_BOOTSTRAP_NEEDED=true
-	if ssh -o StrictHostKeyChecking=accept-new -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+	if ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
 		echo "${BLUE}  SSH key detected — cloning via SSH${RESTORE}"
 		git clone git@github.com:yisonPylkita/dotfiles.git "$HOME/dotfiles"
 		DOTFILES_DIR="$HOME/dotfiles"
@@ -335,12 +335,6 @@ if [[ ! -f "$DOTFILES_DIR/setup-config.sh" ]]; then
 	exit 1
 fi
 
-# Link Zsh files; reruns preserve the links and back up differing local files.
-# Seed local overrides/secrets without overwriting an existing file.
-# Install tracked helper commands.
-# Other top-level config files
-# Pi AI coding assistant config
-# XDG configs
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 if [[ "$CONFIG_HOME" != /* ]]; then
 	CONFIG_HOME="$HOME/.config"
@@ -351,11 +345,6 @@ if [[ "$GUI_SETUP" == true ]]; then
 else
 	bash "$DOTFILES_DIR/setup-config.sh"
 fi
-if [[ -f "$HOME/dotfiles/bin/rustup-report" ]]; then
-	mkdir -p "$HOME/.local/bin"
-	install -m 755 "$HOME/dotfiles/bin/rustup-report" "$HOME/.local/bin/rustup-report"
-fi
-
 echo "${BLUE}Installing Rust CLI tools (prebuilt only)${RESTORE}"
 ensure_rust_cli() {
 	local crate="$1"
@@ -364,12 +353,10 @@ ensure_rust_cli() {
 		"$HOME/.local/bin/cargo-binstall-latest" "$crate"
 	fi
 }
-ensure_rust_cli starship starship
-ensure_rust_cli ripgrep rg
-ensure_rust_cli lsd lsd
-ensure_rust_cli bat bat
-ensure_rust_cli gitui gitui
-ensure_rust_cli zellij zellij
+while IFS=' ' read -r crate binary; do
+	[[ -n "$crate" ]] || continue
+	ensure_rust_cli "$crate" "$binary"
+done < <("$HOME/.local/bin/dotfiles-rust-update" --list)
 
 if [[ -x "$HOME/.local/bin/rustup-report" ]]; then
 	echo "${BLUE}Rust toolchain disk usage${RESTORE}"
@@ -400,7 +387,7 @@ if [[ $SYSTEM_TYPE == U* ]]; then
 	fi
 fi
 
-echo "${BLUE}Default shell stays as zsh. To switch to fish later: chsh -s \$(which fish)${RESTORE}"
+echo "${BLUE}Ensuring zsh is the login shell.${RESTORE}"
 ZSH_BIN="$(command -v zsh)"
 LOGIN_USER="$(id -un)"
 if [[ $SYSTEM_TYPE == "MacOS" ]]; then
@@ -426,9 +413,16 @@ install_nerd_font() {
 		mkdir -p "$FONT_DIR"
 		if ! find "$FONT_DIR" -type f -iname 'CaskaydiaCoveNerdFont*.ttf' -print -quit | grep -q .; then
 			echo "${BLUE}  Downloading CascadiaCode Nerd Font from GitHub...${RESTORE}"
-			local TMP_ZIP="/tmp/CascadiaCode.zip"
-			curl -fsSL "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/CascadiaCode.zip" -o "$TMP_ZIP"
-			unzip -o -q "$TMP_ZIP" -d "$FONT_DIR"
+			local TMP_ZIP
+			TMP_ZIP="$(mktemp)"
+			if ! curl -fsSL "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/CascadiaCode.zip" -o "$TMP_ZIP"; then
+				rm -f "$TMP_ZIP"
+				return 1
+			fi
+			if ! unzip -o -q "$TMP_ZIP" -d "$FONT_DIR"; then
+				rm -f "$TMP_ZIP"
+				return 1
+			fi
 			rm -f "$TMP_ZIP"
 			fc-cache -fv
 			echo "${BLUE}  Font cache updated.${RESTORE}"
@@ -475,4 +469,4 @@ if [[ "$SSH_BOOTSTRAP_NEEDED" == "true" && "$SSH_WAS_AVAILABLE" == "false" ]]; t
 	echo "${BLUE}============================================${RESTORE}"
 fi
 
-echo "${BLUE}All done. Type 'zsh' (or 'fish' to try fish) to launch your shell.${RESTORE}"
+echo "${BLUE}All done. Type 'zsh' to launch your shell.${RESTORE}"

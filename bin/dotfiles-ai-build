@@ -1,10 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ "$#" -ne 0 ]; then
-	printf 'Usage: %s\n' "$0" >&2
-	exit 2
-fi
+output_override=''
+while [ "$#" -gt 0 ]; do
+	case "$1" in
+		--output)
+			if [ "$#" -lt 2 ]; then
+				printf 'Usage: %s [--output PATH]\n' "$0" >&2
+				exit 2
+			fi
+			output_override="$2"
+			shift 2
+			;;
+		--help|-h)
+			printf 'Usage: %s [--output PATH]\n' "$0"
+			exit 0
+			;;
+		*)
+			printf 'Usage: %s [--output PATH]\n' "$0" >&2
+			exit 2
+			;;
+	esac
+done
 
 : "${HOME:?HOME must be set}"
 
@@ -26,8 +43,12 @@ dotfiles_dir="${DOTFILES_DIR:-$(cd -P "$(resolve_script_dir)/.." && pwd)}"
 config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
 generic_file="$dotfiles_dir/ai/AGENTS.md"
 output_dir="$config_home/ai"
-local_file="$output_dir/AGENTS.local.md"
-output_file="$output_dir/AGENTS.md"
+output_file="${output_override:-$output_dir/AGENTS.md}"
+case "$output_file" in
+	*/*) output_dir="${output_file%/*}" ;;
+	*) output_dir='.' ;;
+esac
+local_file="$config_home/ai/AGENTS.local.md"
 
 if [ ! -f "$generic_file" ]; then
 	printf 'Error: generic AI instructions are missing: %s\n' "$generic_file" >&2

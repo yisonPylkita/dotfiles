@@ -1,0 +1,30 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test and lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Install lint tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          python3 -m pip install --upgrade pip "ruff==0.16.8"
+      - name: Unit tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Shell lint
+        run: shellcheck -x new.bash setup-config.sh bin/dotfiles-rust-update bin/dotfiles-ai-build bin/rustup-report
+      - name: Python lint
+        run: ruff check bin/cargo-binstall-latest tests

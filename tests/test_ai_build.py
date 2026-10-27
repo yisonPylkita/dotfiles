@@ -6,7 +6,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / "bin" / "dotfiles-ai-build"
 BASH = shutil.which("bash")
@@ -32,16 +31,17 @@ class AiBuildTests(unittest.TestCase):
             path.chmod(0o600)
         self.temp.cleanup()
 
-    def build(self, script=BUILD, env=None, check=True):
+    def build(self, script=BUILD, env=None, check=True, args=()):
         run_env = self.env.copy()
         if env:
             run_env.update(env)
         result = subprocess.run(
-            [BASH, str(script)],
+            [BASH, str(script), *args],
             env=run_env,
             text=True,
             capture_output=True,
             timeout=30,
+            check=False,
         )
         if check and result.returncode != 0:
             self.fail(result.stdout + result.stderr)
@@ -73,6 +73,13 @@ class AiBuildTests(unittest.TestCase):
         self.assertEqual(self.output.read_bytes(), self.generic + b"\nlater\n")
         self.assertEqual(stat.S_IMODE(self.output.stat().st_mode), 0o444)
         self.assertEqual(sorted(p.name for p in self.output.parent.iterdir()), ["AGENTS.local.md", "AGENTS.md"])
+
+    def test_output_override_writes_to_custom_file(self):
+        output = self.root / "custom" / "AGENTS.md"
+        self.build(args=("--output", str(output)))
+        self.assertEqual(output.read_bytes(), self.generic)
+        self.assertFalse(self.output.exists())
+        output.chmod(0o600)
 
     def test_missing_generic_file_fails_without_output(self):
         fixture = self.root / "fixture"
