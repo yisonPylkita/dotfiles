@@ -72,7 +72,7 @@ get_prefered_editor() {
 update_rust() {
 	dotfiles-rust-update
 	local update_status=$?
-	command -v rustup-report >/dev/null 2>&1 && rustup-report
+	command -v rustup-report >/dev/null 2>&1 && env -u RUSTUP_TOOLCHAIN CARGO_HOME="$HOME/.cargo" RUSTUP_HOME="$HOME/.rustup" rustup-report
 	return $update_status
 }
 

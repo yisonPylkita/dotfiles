@@ -26,7 +26,7 @@ export PATH
 cd "$HOME"
 
 if [ "$mode" = all ]; then
-    "$CARGO_HOME/bin/rustup" update
+    "$CARGO_HOME/bin/rustup" update stable
 fi
 
 for crate in starship ripgrep lsd bat gitui zellij; do

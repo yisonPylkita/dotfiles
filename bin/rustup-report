@@ -11,27 +11,27 @@ if [[ ! -d $toolchain_dir ]]; then
 	exit 0
 fi
 
-toolchain_status=$(rustup toolchain list 2>/dev/null || true)
+if toolchain_status=$(rustup toolchain list 2>/dev/null); then
+	status_available=true
+else
+	toolchain_status=
+	status_available=false
+fi
 rows=
 count=0
 total_kb=0
-non_stable_count=0
-non_stable_kb=0
+toolchain_names=()
+toolchain_sizes=()
 
 for dir in "$toolchain_dir"/*; do
 	[[ -d $dir ]] || continue
 	name=${dir##*/}
 	size_kb=$(du -sk "$dir" | awk '{print $1}')
 	rows+="${size_kb}"$'\t'"${name}"$'\n'
+	toolchain_names+=("$name")
+	toolchain_sizes+=("$size_kb")
 	count=$((count + 1))
 	total_kb=$((total_kb + size_kb))
-	case $name in
-		stable-*) ;;
-		*)
-			non_stable_count=$((non_stable_count + 1))
-			non_stable_kb=$((non_stable_kb + size_kb))
-			;;
-	esac
 done
 
 if (( count == 0 )); then
@@ -59,9 +59,35 @@ printf '%s' "$rows" | sort -rn | while IFS=$'\t' read -r size_kb name; do
 done
 
 printf '\n'
-if (( non_stable_count == 0 )); then
-	printf 'Cleanup recommended: no - only the stable toolchain is installed.\n'
+if [[ $status_available != true ]]; then
+	printf 'Toolchain status unavailable; active/default exclusions could not be checked, so no review candidates are listed.\n'
 else
-	printf 'Cleanup recommended: yes - %d non-stable toolchain(s) use %s. Keep one only if a project pins it.\n' \
-		"$non_stable_count" "$(format_kb "$non_stable_kb")"
+	review_count=0
+	review_kb=0
+	review_names=()
+	if (( count > 1 )); then
+		for index in "${!toolchain_names[@]}"; do
+			name=${toolchain_names[$index]}
+			case $name in
+				stable|stable-*) continue ;;
+			esac
+			status=$(printf '%s\n' "$toolchain_status" | awk -v n="$name" '$1 == n { $1 = ""; sub(/^ /, ""); print; exit }')
+			case $status in
+				*active*|*default*) continue ;;
+			esac
+			review_names+=("$name")
+			review_count=$((review_count + 1))
+			review_kb=$((review_kb + toolchain_sizes[$index]))
+		done
+	fi
+	if (( review_count == 0 )); then
+		printf 'Additional toolchains for manual review: none.\n'
+	else
+		printf 'Additional toolchains for manual review: %d (%s total).\n' \
+			"$review_count" "$(format_kb "$review_kb")"
+		for name in "${review_names[@]}"; do
+			printf '  %s\n' "$name"
+		done
+	fi
+	printf 'Project toolchain pins cannot be inferred from this report.\n'
 fi

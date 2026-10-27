@@ -117,10 +117,10 @@ function update_system --description 'update the operating system packages'
     end
 end
 
-function update_rust --description 'update Rust and its CLIs, then report toolchain disk usage'
+function update_rust --description 'update stable Rust and its CLIs, then report toolchain disk usage'
     dotfiles-rust-update
     set -l update_status $status
-    type -q rustup-report; and rustup-report
+    type -q rustup-report; and env -u RUSTUP_TOOLCHAIN CARGO_HOME="$HOME/.cargo" RUSTUP_HOME="$HOME/.rustup" rustup-report
     return $update_status
 end
 

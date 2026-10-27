@@ -106,13 +106,29 @@ class RustUpdateTests(unittest.TestCase):
     def _calls(self):
         return [json.loads(line) for line in self.log.read_text().splitlines()]
 
-    def test_default_updates_rustup_and_global_cli_tools(self):
+    def test_default_updates_stable_rustup_and_global_cli_tools(self):
         result = self._run()
 
         self.assertEqual(result.returncode, 0, result.stderr)
         calls = self._calls()
         self.assertEqual([call["kind"] for call in calls], ["rustup"] + ["binstall"] * 6)
-        self.assertEqual(calls[0]["args"], ["update"])
+        self.assertEqual(calls[0]["args"], ["update", "stable"])
+        self.assertEqual([call["args"] for call in calls[1:]], [["--force", crate] for crate in CRATES])
+        for call in calls:
+            self.assertEqual(call["cwd"], str(self.home.resolve()))
+            self.assertEqual(call["cargo_home"], str(self.home / ".cargo"))
+            self.assertEqual(call["rustup_home"], str(self.home / ".rustup"))
+            self.assertEqual(call["install_root"], str(self.home / ".cargo"))
+            self.assertEqual(call["toolchain"], "<unset>")
+            self.assertTrue(call["path"].startswith(f"{self.cargo_bin}:{self.local_bin}:"))
+
+    def test_all_mode_updates_only_stable_rustup_and_global_cli_tools(self):
+        result = self._run("all")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = self._calls()
+        self.assertEqual([call["kind"] for call in calls], ["rustup"] + ["binstall"] * 6)
+        self.assertEqual(calls[0]["args"], ["update", "stable"])
         self.assertEqual([call["args"] for call in calls[1:]], [["--force", crate] for crate in CRATES])
         for call in calls:
             self.assertEqual(call["cwd"], str(self.home.resolve()))

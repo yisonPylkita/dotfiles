@@ -170,6 +170,26 @@ def discover(crate: str, targets: list[str], max_versions: int) -> tuple[str, st
     return None
 
 
+def cargo_binstall_path() -> str | None:
+    brew = shutil.which("brew")
+    if brew:
+        try:
+            result = subprocess.run(
+                [brew, "--prefix", "cargo-binstall"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except OSError:
+            result = None
+        if result is not None and result.returncode == 0:
+            prefix = result.stdout.strip()
+            candidate = os.path.join(prefix, "bin", "cargo-binstall")
+            if prefix and os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+                return candidate
+    return shutil.which("cargo-binstall")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Install the newest crate version with a prebuilt binary."
@@ -205,9 +225,17 @@ def main() -> int:
     if args.check:
         return 0
 
+    executable = cargo_binstall_path()
+    if not executable:
+        print(
+            "cargo-binstall-latest: cargo-binstall executable not found; "
+            "install it with Homebrew or add it to PATH",
+            file=sys.stderr,
+        )
+        return 1
+
     command = [
-        "cargo",
-        "binstall",
+        executable,
         "--no-confirm",
         "--disable-strategies",
         "compile",
