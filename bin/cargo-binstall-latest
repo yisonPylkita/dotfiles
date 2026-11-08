@@ -9,6 +9,8 @@ has been chosen, by cargo-binstall.
 from __future__ import annotations
 
 import argparse
+import gzip
+import http.client
 import json
 import os
 import platform
@@ -16,17 +18,29 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import zlib
 
 USER_AGENT = "dotfiles-cargo-binstall-latest/1"
+JSON_ATTEMPTS = 3
+RELEASES_PER_PAGE = 10
 CRATES_VERSIONS = "https://crates.io/api/v1/crates/{crate}/versions"
 QUICKINSTALL = (
     "https://github.com/cargo-bins/cargo-quickinstall/releases/download/"
     "{crate}-{version}/{crate}-{version}-{target}.tar.gz"
 )
 ARCHIVE_SUFFIXES = (".tar.gz", ".tgz", ".tar.xz", ".tar.zst", ".zip")
+NETWORK_ERRORS = (
+    urllib.error.URLError,
+    http.client.HTTPException,
+    OSError,
+    EOFError,
+    ValueError,
+    zlib.error,
+)
 
 
 def _headers(token: str | None = None) -> dict[str, str]:
@@ -40,14 +54,41 @@ def _headers(token: str | None = None) -> dict[str, str]:
     return headers
 
 
-def _open(url: str, method: str = "GET", token: str | None = None):
-    request = urllib.request.Request(url, method=method, headers=_headers(token))
+def _open(
+    url: str,
+    method: str = "GET",
+    token: str | None = None,
+    headers: dict[str, str] | None = None,
+):
+    request_headers = _headers(token)
+    if headers:
+        request_headers.update(headers)
+    request = urllib.request.Request(url, method=method, headers=request_headers)
     return urllib.request.urlopen(request, timeout=20)
 
 
 def _json(url: str, token: str | None = None):
-    with _open(url, token=token) as response:
-        return json.load(response)
+    for attempt in range(1, JSON_ATTEMPTS + 1):
+        try:
+            with _open(
+                url,
+                token=token,
+                headers={"Accept-Encoding": "gzip"},
+            ) as response:
+                data = response.read()
+                if response.headers.get("Content-Encoding") == "gzip":
+                    data = gzip.decompress(data)
+                return json.loads(data)
+        except urllib.error.HTTPError:
+            raise
+        except NETWORK_ERRORS as error:
+            if attempt == JSON_ATTEMPTS:
+                raise
+            print(
+                f"warning: retrying {url} after incomplete response: {error}",
+                file=sys.stderr,
+            )
+            time.sleep(attempt)
 
 
 def _head_ok(url: str) -> bool:
@@ -56,7 +97,7 @@ def _head_ok(url: str) -> bool:
             return response.status in (200, 301, 302)
     except urllib.error.HTTPError as error:
         return error.code in (200, 301, 302)
-    except (OSError, urllib.error.URLError):
+    except (OSError, urllib.error.URLError, http.client.HTTPException):
         return False
 
 
@@ -113,14 +154,33 @@ def target_candidates() -> list[str]:
     return [f"{arch}-unknown-linux-gnu"]
 
 
-def release_assets(repo: str, token: str | None) -> dict[str, list[str]]:
-    """Map release version -> asset names from one GitHub releases request."""
-    try:
-        releases = _json(
-            f"https://api.github.com/repos/{repo}/releases?per_page=100", token
+def _release_listing(repo: str, token: str | None, max_versions: int):
+    releases: list[dict] = []
+    page = 1
+    while len(releases) < max_versions and page <= 10:
+        batch = _json(
+            f"https://api.github.com/repos/{repo}/releases"
+            f"?per_page={RELEASES_PER_PAGE}&page={page}",
+            token,
         )
-    except (urllib.error.HTTPError, urllib.error.URLError, OSError) as error:
-        print(f"warning: could not read GitHub releases for {repo}: {error}", file=sys.stderr)
+        releases.extend(batch)
+        if len(batch) < RELEASES_PER_PAGE:
+            break
+        page += 1
+    return releases
+
+
+def release_assets(
+    repo: str, token: str | None, max_versions: int
+) -> dict[str, list[str]]:
+    """Map release version -> asset names from GitHub release metadata."""
+    try:
+        releases = _release_listing(repo, token, max_versions)
+    except NETWORK_ERRORS as error:
+        print(
+            f"warning: could not read GitHub releases for {repo}: {error}",
+            file=sys.stderr,
+        )
         return {}
 
     assets: dict[str, list[str]] = {}
@@ -151,9 +211,8 @@ def asset_matches(name: str, target: str) -> bool:
 
 def discover(crate: str, targets: list[str], max_versions: int) -> tuple[str, str, str] | None:
     versions = stable_versions(crate)
-    token = github_token()
     repo = github_repo(versions[0]) if versions else None
-    assets = release_assets(repo, token) if repo else {}
+    assets: dict[str, list[str]] | None = None
 
     for version in versions[:max_versions]:
         number = version.get("num", "")
@@ -164,8 +223,13 @@ def discover(crate: str, targets: list[str], max_versions: int) -> tuple[str, st
             if _head_ok(quickinstall_url):
                 return number, target, "quickinstall"
 
-            if any(asset_matches(name, target) for name in assets.get(number, [])):
-                return number, target, "github"
+            if repo:
+                if assets is None:
+                    assets = release_assets(repo, github_token(), max_versions)
+                if any(
+                    asset_matches(name, target) for name in assets.get(number, [])
+                ):
+                    return number, target, "github"
 
     return None
 
@@ -211,7 +275,14 @@ def main() -> int:
     args = parser.parse_args()
 
     targets = args.targets or target_candidates()
-    found = discover(args.crate, targets, args.max_versions)
+    try:
+        found = discover(args.crate, targets, args.max_versions)
+    except NETWORK_ERRORS as error:
+        print(
+            f"cargo-binstall-latest: could not discover {args.crate}: {error}",
+            file=sys.stderr,
+        )
+        return 1
     if found is None:
         print(
             f"cargo-binstall-latest: no prebuilt binary found for {args.crate} "

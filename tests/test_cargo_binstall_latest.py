@@ -1,4 +1,6 @@
 import contextlib
+import gzip
+import http.client
 import importlib.machinery
 import importlib.util
 import io
@@ -15,6 +17,96 @@ LOADER = importlib.machinery.SourceFileLoader("cargo_binstall_latest", str(HELPE
 SPEC = importlib.util.spec_from_loader(LOADER.name, LOADER)
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
+
+
+class FakeResponse:
+    def __init__(self, body, status=200, headers=None):
+        self.body = io.BytesIO(body)
+        self.status = status
+        self.headers = headers or {}
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *arguments):
+        return False
+
+    def read(self, *arguments):
+        return self.body.read(*arguments)
+
+
+class TruncatedResponse(FakeResponse):
+    def read(self, *arguments):
+        raise http.client.IncompleteRead(b"partial", 100)
+
+
+class JsonRetryTests(unittest.TestCase):
+    def test_retries_incomplete_response(self):
+        stderr = io.StringIO()
+        with (
+            patch.object(
+                MODULE,
+                "_open",
+                side_effect=[
+                    TruncatedResponse(b""),
+                    FakeResponse(b'{"ok": true}'),
+                ],
+            ) as open_mock,
+            patch.object(MODULE.time, "sleep") as sleep_mock,
+            contextlib.redirect_stderr(stderr),
+        ):
+            self.assertEqual(MODULE._json("https://example.invalid"), {"ok": True})
+
+        self.assertEqual(open_mock.call_count, 2)
+        sleep_mock.assert_called_once_with(1)
+        self.assertIn("retrying", stderr.getvalue())
+
+    def test_decompresses_gzip_response(self):
+        compressed = gzip.compress(b'{"ok": true}')
+        with patch.object(
+            MODULE,
+            "_open",
+            return_value=FakeResponse(
+                compressed, headers={"Content-Encoding": "gzip"}
+            ),
+        ) as open_mock:
+            self.assertEqual(MODULE._json("https://example.invalid"), {"ok": True})
+
+        self.assertEqual(
+            open_mock.call_args.kwargs["headers"],
+            {"Accept-Encoding": "gzip"},
+        )
+
+    def test_release_listing_paginates_until_enough_versions(self):
+        batch = [
+            {"tag_name": f"v1.0.{index}", "assets": []}
+            for index in range(MODULE.RELEASES_PER_PAGE)
+        ]
+        with patch.object(
+            MODULE, "_json", side_effect=[batch, batch]
+        ) as json_mock:
+            releases = MODULE._release_listing("owner/repo", None, 15)
+
+        self.assertEqual(len(releases), 20)
+        self.assertEqual(json_mock.call_count, 2)
+        self.assertIn("page=1", json_mock.call_args_list[0].args[0])
+        self.assertIn("page=2", json_mock.call_args_list[1].args[0])
+
+    def test_release_assets_falls_back_after_repeated_incomplete_reads(self):
+        stderr = io.StringIO()
+        with (
+            patch.object(
+                MODULE,
+                "_json",
+                side_effect=http.client.IncompleteRead(b"partial", 100),
+            ),
+            contextlib.redirect_stderr(stderr),
+        ):
+            self.assertEqual(MODULE.release_assets("owner/repo", None, 20), {})
+
+        self.assertIn(
+            "could not read GitHub releases for owner/repo", stderr.getvalue()
+        )
 
 
 class CargoBinstallLatestTests(unittest.TestCase):
